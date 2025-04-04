@@ -5,7 +5,7 @@
       <span>Déclarations des crédits</span>
     </div>
     <v-card style="margin-top: 50px; position: sticky; top: 0; z-index: 10; background-color: transparent;">
-      <v-tabs v-model="tab" style="background-color: #007d3b;">
+      <v-tabs v-model="tab" >
         <v-tab value="one">Création</v-tab>
         <v-tab value="two">Listes</v-tab>
       </v-tabs>
