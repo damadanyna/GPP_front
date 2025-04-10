@@ -61,7 +61,8 @@ class Encours:
             conn = self.db.connect()
             cursor = conn.cursor()
             # Offset should be dynamically included in the query
-            select_query = f'SELECT * FROM etat_des_encours LIMIT 100 OFFSET {offset}'
+            # select_query = f'SELECT * FROM etat_des_encours LIMIT 100 OFFSET {offset}'
+            select_query = f'SELECT * FROM etat_des_encours'
             
             # Execute the query
             cursor.execute(select_query)
