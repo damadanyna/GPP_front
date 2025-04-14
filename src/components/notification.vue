@@ -34,7 +34,7 @@ const load_database = async () => {
   console.log(usePopupStore().loadFile);
 
   try {
-    const response = await axios.post('http://127.0.0.1:5000/api/create_table', {
+    const response = await axios.post('http://192.168.1.212:5000/api/create_table', {
       filename: usePopupStore().loadFile
     });
 

@@ -11,10 +11,25 @@
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
-          <v-data-table
-            :headers="headers" :items="list_encours" @click:row="onRowClick"  v-model="selectedItems"  item-value="Numero_pret" :search="search" fixed-header height="400px" item-key="id"  ></v-data-table>
+          <v-data-table :headers="headers" :items="list_encours" @click:row="onRowClick"  v-model="selectedItems"  item-value="Numero_pret" :search="search" fixed-header height="400px" item-key="id"  ></v-data-table>
         </v-card>
       </v-tabs-window-item>
+
+      <!-- Dialogue qui sera contrôlé par la fonction -->
+      <v-dialog v-model="dialog" width="auto">
+        <v-card style=" padding: 10px 20px;">
+          <v-card-title style=" font-size: 12px;">{{ dialogTitle }}</v-card-title>
+          <v-card-text>
+            {{ dialogContent }}
+          </v-card-text>
+          <v-card-actions>
+            <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
+              <button @click="cancel" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
+              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
+            </div>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <v-tabs-window-item value="two">
         <v-card-text>Listes</v-card-text>
@@ -25,9 +40,12 @@
 </template>
 
 <script setup>
+import api from "@/api/axios";
 import { ref } from "vue";
-import axios from 'axios';
 import { onMounted } from "vue";
+import { saveData, getData,getAllData } from '@/api/indexDB';
+// import Cookies from 'js-cookie';
+// import Etat_encours from "./etat_encours.vue";
 
 const tab = ref("one");
 
@@ -74,20 +92,35 @@ const headers= [
         ]
 const  list_encours=ref([])
 
+// Variables pour le dialogue
+const dialog = ref(false);
+const dialogTitle = ref('');
+const dialogContent = ref('');
 const selectedItems = ref([]); // <- Ici on récupère les items sélectionnés
 // const selectedRow = ref(null);
 
-const get_encours = async () => {
+const get_encours = async (offset, limit) => {
   try {
-    const response = await axios.get('http://127.0.0.1:5000/api/get_encours?offset=10000');
-    // console.log(response.data.files);
-    console.log(response.data.list_of_data);
-    list_encours.value=response.data.list_of_data
+    const cacheKey = `encours_${offset}_${limit}`;
 
+    // D'abord, on essaie de récupérer depuis IndexedDB
+    const cachedData = await getData(cacheKey);
+    if (cachedData) {
+      console.log('✅ Données chargées depuis IndexedDB');
+      // list_encours.value = cachedData;
+      return;
+    }
 
-    // ecours_list.value=response.data// Affichage des fichiers reçus
+    // Sinon on fait l'appel à l’API
+    const response = await api.get(`/api/get_encours?offset=${offset}&limit=${limit}`);
+    // list_encours.value = response.data.list_of_data;
+
+    // Sauvegarde dans IndexedDB
+    await saveData(cacheKey, response.data.list_of_data);
+    console.log('📡 Données récupérées depuis API et stockées localement');
+
   } catch (error) {
-    console.error("Erreur lors de la récupération des fichiers:", error); // Gestion des erreurs
+    console.error("❌ Erreur lors de la récupération des fichiers:", error);
   }
 };
 
@@ -106,15 +139,38 @@ const onRowClick = (event,item) => {
   if (rowElement) {
     rowElement.classList.add('red-row');
   }
+  openDialog('Notification?','Créez le GPP pour:  '+ item.item.Numero_pret)
 };
 
+// Fonction pour ouvrir le dialogue avec des paramètres personnalisés
+const openDialog = (title , content) => {
+  dialogTitle.value = title;
+  dialogContent.value = content;
+  dialog.value = true;
+};
+const closeDialog = () => {
+  dialog.value = false;
+};
 
 // Exemple de transformation
 
+const loadAllEncours = async () => {
+  const step = 1000;
+  for (let offset = 0; offset < 10000; offset += step) {
+    await get_encours(offset, step);
+  }
+};
 
+onMounted(async ()=>{
+  loadAllEncours();
+  const allData = await getAllData();
+  list_encours.value = allData;
+  // console.log(allData);
 
-onMounted(()=>{
-  get_encours()
+  // get_encours(0,10000)
+  // setTimeout(() => {
+  //   get_encours(0,10000)
+  // }, 200);
 })
 
 

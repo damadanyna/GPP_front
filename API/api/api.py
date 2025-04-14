@@ -9,7 +9,9 @@ api_bp = Blueprint('api', __name__)
 encours = Encours()
 
 # Appliquer CORS sur ce blueprint pour autoriser les requêtes venant de 'http://127.0.0.1:3000'
-CORS(api_bp, origins=["http://127.0.0.1:3000"])
+# CORS(api_bp, origins=["http://127.0.0.1:3000"])
+CORS(api_bp, resources={r"/*": {"origins": "*"}})
+
 
 @api_bp.route('/test', methods=['GET'])
 def test_route():
@@ -56,9 +58,11 @@ def get_all_dfe_database():
     Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
     avec support d'un paramètre d'offset.
     """
-    try:
-        offset = request.args.get('offset', default=0, type=int)  # récupère l'offset de l'URL
-        data = encours.get_all_dfe_database(offset=offset)
+    offset = int(request.args.get('offset', 0))
+    limit = int(request.args.get('limit', 100))  
+    print (f"offset: {offset}, limit: {limit}")
+    try:  # récupère l'offset de l'URL
+        data = encours.get_all_dfe_database(offset=offset,limit=limit)
         # Liste des clés
         cles = [
             'Agence', 'identification_client', 'Numero_pret', 'linked_appl_id', 'Date_pret',

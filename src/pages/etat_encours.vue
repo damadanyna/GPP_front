@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios';
+import api from '@/api/axios'
 import { usePopupStore } from '../stores/store'
 
 const fileInput = ref(null)
@@ -126,7 +126,7 @@ const uploadFile = () => {
   const formData = new FormData();
   formData.append('file', files_data.value);
 
-  axios.post('http://127.0.0.1:5000/api/upload', formData, {
+  api.post('/api/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -144,7 +144,7 @@ const uploadFile = () => {
 // Méthode pour afficher les fichiers
 const showFiles = async () => {
   try {
-    const response = await axios.get('http://127.0.0.1:5000/api/show_files');
+    const response = await api.get('/api/show_files');
     console.log(response.data.files);
     list_file.value=response.data.files// Affichage des fichiers reçus
   } catch (error) {

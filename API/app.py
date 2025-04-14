@@ -11,4 +11,8 @@ encours = Encours()
 app.register_blueprint(api_bp, url_prefix='/api')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=8081)
+    
+    # flask --app app run --port=8081
+    flask run --host=0.0.0.0
+
