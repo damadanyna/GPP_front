@@ -25,7 +25,6 @@ import {onMounted, ref } from 'vue';
 import router from './router/index';
 import notification from './components/notification.vue';
 import { usePopupStore } from './stores/store'
-
 import Cookies from 'js-cookie' // <--- Ajouté
 
 
