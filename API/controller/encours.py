@@ -1,6 +1,7 @@
 import os
 from werkzeug.utils import secure_filename
 import openpyxl
+from datetime import datetime
 from db.db  import DB 
 
 class Encours:
@@ -223,3 +224,127 @@ class Encours:
             import traceback
             print(f"[DEBUG] Traceback complet : {traceback.format_exc()}")
             return {'error': error_msg}
+    def insert_into_echange_credit(self, data): 
+        def generate_next_id(cursor):
+            cursor.execute("SELECT ID FROM echange_credit ORDER BY ID DESC LIMIT 1")
+            last = cursor.fetchone()
+            if last and last[0].startswith("SIP"):
+                num = int(last[0][3:]) + 1
+            else:
+                num = 1
+            return f"SIP{num:010d}"
+
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, "%Y%m%d").date()
+            except:
+                return None
+
+        try:
+            conn = self.db.connect()
+            cursor = conn.cursor()
+
+            # Création de la table si elle n'existe pas
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS echange_credit (
+                ID VARCHAR(20) PRIMARY KEY,
+                AGENCE VARCHAR(10),
+                AGEC VARCHAR(10),
+                COMPTE VARCHAR(20),
+                NOM VARCHAR(100),
+                CLASST VARCHAR(10),
+                CODAPE VARCHAR(10),
+                MNTCAHT DECIMAL(18,2),
+                CLI_N_A VARCHAR(20),
+                NATURE VARCHAR(50),
+                TYPECREDIT VARCHAR(50),
+                MONTANT DECIMAL(18,2),
+                DATECH DATE,
+                RANG INT,
+                TAUX DECIMAL(5,2),
+                DATOUV DATE,
+                group_of VARCHAR(50),
+                Date_enreg DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+            cursor.execute(create_table_query)
+
+            # Champs requis
+            required_fields = [
+                "Agence", "Agent_de_gestion", "Numero_pret", "Nom_client",
+                "arr_status", "Code_Garantie", "Amount", "Secteur_d_activité",
+                "Produits", "Total_capital_echus_non_echus", "Date_pret",
+                "taux_d_interet", "Date_fin_pret", "linked_appl_id"
+            ]
+            for field in required_fields:
+                if field not in data:
+                    return {"error": f"Champ manquant : {field}"}
+
+            # Calcul de CLASST
+            arr_status_raw = data.get("arr_status", "")
+            classt = {
+                "current": "Régulier",
+                "arrears": "En Retard"
+            }.get(arr_status_raw.lower(), arr_status_raw.upper() if arr_status_raw else "Inconnu")
+
+            # Vérif du compte et calcul de CLI_N_A + RANG
+            compte = data["Numero_pret"]
+            cursor.execute(
+                "SELECT RANG FROM echange_credit WHERE COMPTE = %s ORDER BY Date_enreg DESC LIMIT 1",
+                (compte,)
+            )
+            existing = cursor.fetchone()
+            if existing:
+                cli_na = 'A'
+                rang = existing[0] + 1
+            else:
+                cli_na = 'N'
+                rang = 1
+
+            # Générer ID
+            new_id = generate_next_id(cursor)
+
+            # Requête d'insertion
+            insert_query = """
+            INSERT INTO echange_credit (
+                ID, AGENCE, AGEC, COMPTE, NOM, CLASST, CODAPE, MNTCAHT, CLI_N_A,
+                NATURE, TYPECREDIT, MONTANT, DATECH, RANG, TAUX, DATOUV, group_of
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            """
+            values = (
+                new_id,
+                data["Agence"],
+                data["Agent_de_gestion"],              # AGEC
+                compte,
+                data["Nom_client"],
+                2,
+                data["Secteur_d_activité_code"],
+                float(data["Amount"]),
+                cli_na,
+                # data["Secteur_d_activité"],
+                '',
+                data["Produits"],
+                float(data["Total_capital_echus_non_echus"]),
+                parse_date(data["Date_pret"]),
+                rang,
+                float(data["taux_d_interet"]),
+                parse_date(data["Date_fin_pret"]),
+                data["linked_appl_id"]
+            )
+
+            cursor.execute(insert_query, values)
+            conn.commit()
+
+            print("Ligne insérée avec succès.")
+            return {"status": "success", "inserted": 1}
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"error": str(e)}
+
+        finally:
+            if conn:
+                conn.close()

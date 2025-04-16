@@ -51,6 +51,26 @@ def show_files():
     files = encours.show_files()
     return jsonify({'files': files})
 
+@api_bp.route('/insert_credit_row', methods=['POST'])
+def insert_credit_row():
+    """
+    Reçoit une ligne de crédit du frontend et l'insère dans echange_credit.
+    """
+    data = request.get_json()
+
+    if not data or 'row_data' not in data:
+        return jsonify({'error': 'Aucune donnée reçue'}), 400
+
+    row = data['row_data']
+
+    try:
+        result = encours.insert_into_echange_credit(row)
+        return jsonify(result), 200 if result.get("status") == "success" else 400
+
+    except Exception as e:
+        print(f"Erreur dans /insert_credit_row : {e}")
+        return jsonify({'error': str(e)}), 500
+
  
 @api_bp.route('/get_encours', methods=['GET'])
 def get_all_dfe_database():

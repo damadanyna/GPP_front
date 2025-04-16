@@ -1,6 +1,7 @@
 <!-- src/pages/home.vue or src/components/home.vue -->
 <template>
   <v-card style=" position: sticky; top: 0; z-index: 10; background-color: transparent; overflow: hidden;">
+    <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
     <v-tabs v-model="tab" >
       <v-tab value="one">Création</v-tab>
       <v-tab value="two">Listes</v-tab>
@@ -24,7 +25,7 @@
           </v-card-text>
           <v-card-actions>
             <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
-              <button @click="cancel" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
+              <button @click="addIt()" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
               <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
             </div>
           </v-card-actions>
@@ -44,6 +45,10 @@ import api from "@/api/axios";
 import { ref } from "vue";
 import { onMounted } from "vue";
 import { saveData, getData,getAllData } from '@/api/indexDB';
+import { usePopupStore } from '../stores/store'
+
+
+
 // import Cookies from 'js-cookie';
 // import Etat_encours from "./etat_encours.vue";
 
@@ -97,7 +102,8 @@ const dialog = ref(false);
 const dialogTitle = ref('');
 const dialogContent = ref('');
 const selectedItems = ref([]); // <- Ici on récupère les items sélectionnés
-// const selectedRow = ref(null);
+const selectedRow = ref(null);
+
 
 const get_encours = async (offset, limit) => {
   try {
@@ -129,6 +135,7 @@ const onRowClick = (event,item) => {
   const rowElement = event.target.closest('tr');
 
   console.log(item.item);
+  selectedRow.value=item.item
 
   // Supprime la classe rouge de toutes les lignes (optionnel si tu veux une seule ligne en rouge)
   document.querySelectorAll('tr.red-row').forEach(row => {
@@ -151,6 +158,35 @@ const openDialog = (title , content) => {
 const closeDialog = () => {
   dialog.value = false;
 };
+const addIt = async () => {
+// console.log(selectedItems);
+
+  closeDialog()
+  usePopupStore().show_notification.status=true
+  usePopupStore().show_notification.message='Effectué'
+  usePopupStore().show_notification.ico='mdi mdi-check'
+
+  send_selected_credit()
+};
+
+
+const send_selected_credit = async () => {
+  try {
+    if (!selectedRow.value) {
+      console.warn("⚠️ Aucune ligne sélectionnée à envoyer.");
+      return;
+    }
+
+    const response = await api.post('/api/insert_credit_row', {
+      row_data: selectedRow.value
+    });
+
+    console.log("✅ Réponse de l'API :", response.data);
+  } catch (error) {
+    console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
+  }
+};
+
 
 // Exemple de transformation
 
