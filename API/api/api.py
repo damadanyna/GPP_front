@@ -90,9 +90,44 @@ def get_all_dfe_database():
             'taux_d_interet', 'Nombre_de_jour_retard', 'payment_date', 'Statut_du_client',
             'Capital_Non_appele_ech', 'Capital_Appele_Non_verse', 'Total_capital_echus_non_echus',
             'Total_interet_echus', 'OD Pen', 'OD & PEN', 'Solde du client', 'Agent_de_gestion',
-            'Secteur_d_activité', 'Secteur_d_activité_code', '.Agent_de_gestion', 'Code_Garantie',
+            'Secteur_d_activité', 'Secteur_d_activité_code', '.Agent_de_gestion', 'Chiff_affaire', 'Code_Garantie',
             'Valeur_garantie', 'arr_status'
         ]
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/get_liste_a_traiter', methods=['GET'])
+def get_liste_a_traiter():
+    """
+    Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
+    avec support d'un paramètre d'offset.
+    """ 
+    try:  # récupère l'offset de l'URL
+        data = encours.get_liste_a_traiter()
+        # Liste des clés
+        cles =[
+            "Id",
+            "Agence",
+            "Agec",
+            "Compte",
+            "Nom",
+            "Classt",
+            "Codape",
+            "Mntcaht",
+            "Cli_n_a",
+            "Nature",
+            "Typecredit",
+            "Montant",
+            "Datech",
+            "Rang",
+            "Taux",
+            "Datouv",
+            "Group_of",
+            "Date_enreg"
+        ]
+
         liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
         return jsonify({'list_of_data': liste_dictionnaires}) 
     except Exception as e:

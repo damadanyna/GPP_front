@@ -32,8 +32,15 @@
         </v-card>
       </v-dialog>
 
+
+
       <v-tabs-window-item value="two">
-        <v-card-text>Listes</v-card-text>
+        <v-card title="LISTE DES DOSSIERS A TRAITER" flat>
+          <template v-slot:text>
+            <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
+          </template>
+          <v-data-table :headers="headers_a_traiter" :items="list_a_traiter_" @click:row="onRowClick"  v-model="selectedItems_a_traiter"  item-value="Numero_pret" :search="search_a_traiter" fixed-header height="400px" item-key="id"  ></v-data-table>
+        </v-card>
       </v-tabs-window-item>
     </v-tabs-window>
   </v-card>
@@ -56,6 +63,7 @@ const tab = ref("one");
 
 // Déclaration des variables réactives
 const search = ref('');
+const search_a_traiter = ref('');
 
 const headers= [
   {
@@ -74,6 +82,7 @@ const headers= [
 { key: 'Produits', title: 'Produits' },
 { key: 'Amount', title: 'Amount' },
 { key: 'Duree_Remboursement', title: 'Duree_Remboursement' },
+{ key: 'Chiff_affaire', title: "Chiffre d'affaire" },
 { key: 'taux_d_interet', title: 'taux_d_interet' },
 { key: 'Nombre_de_jour_retard', title: 'Nombre_de_jour_retard' },
 { key: 'payment_date', title: 'payment_date' },
@@ -92,9 +101,36 @@ const headers= [
 { key: 'Code_Garantie', title: 'Code_Garantie' },
 { key: 'Valeur_garantie', title: 'Valeur_garantie' },
 { key: 'arr_status', title: 'arr_status' }
+]
+
+const headers_a_traiter= [
+  {
+    align: 'start',
+    key: 'Numero_pret',
+    sortable: false,
+  },
+  { key: "Id", title: "Id" },
+  { key: "Agence", title: "Agence" },
+  { key: "Agec", title: "Agec" },
+  { key: "Compte", title: "Compte" },
+  { key: "Nom", title: "Nom" },
+  { key: "Classt", title: "Classt" },
+  { key: "Codape", title: "Codape" },
+  { key: "Mntcaht", title: "Mntcaht" },
+  { key: "Cli_n_a", title: "Cli_n_a" },
+  { key: "Nature", title: "Nature" },
+  { key: "Typecredit", title: "Typecredit" },
+  { key: "Montant", title: "Montant" },
+  { key: "Datech", title: "Datech" },
+  { key: "Rang", title: "Rang" },
+  { key: "Taux", title: "Taux" },
+  { key: "Datouv", title: "Datouv" },
+  { key: "Group_of", title: "Group_of" },
+  { key: "Date_enreg", title: "Date_enreg" }
+
+]
 
 
-        ]
 const  list_encours=ref([])
 
 // Variables pour le dialogue
@@ -102,7 +138,9 @@ const dialog = ref(false);
 const dialogTitle = ref('');
 const dialogContent = ref('');
 const selectedItems = ref([]); // <- Ici on récupère les items sélectionnés
+const selectedItems_a_traiter = ref([]); // <- Ici on récupère les items sélectionnés
 const selectedRow = ref(null);
+const list_a_traiter_ = ref(null);
 
 
 const get_encours = async (offset, limit) => {
@@ -111,6 +149,8 @@ const get_encours = async (offset, limit) => {
 
     // D'abord, on essaie de récupérer depuis IndexedDB
     const cachedData = await getData(cacheKey);
+
+    // console.log(cachedData);
     if (cachedData) {
       console.log('✅ Données chargées depuis IndexedDB');
       // list_encours.value = cachedData;
@@ -123,6 +163,31 @@ const get_encours = async (offset, limit) => {
 
     // Sauvegarde dans IndexedDB
     await saveData(cacheKey, response.data.list_of_data);
+    console.log('📡 Données récupérées depuis API et stockées localement');
+
+  } catch (error) {
+    console.error("❌ Erreur lors de la récupération des fichiers:", error);
+  }
+};
+const get_list_a_traiter = async ( ) => {
+  try {
+    const cacheKey = `a_traiter`;
+
+    // D'abord, on essaie de récupérer depuis IndexedDB
+    const cachedData = await getData(cacheKey);
+
+    // console.log(cachedData);
+    if (cachedData) {
+      console.log('✅ Données chargées depuis IndexedDB');
+
+    }
+    // Sinon on fait l'appel à l’API
+    const response = await api.get(`/api/get_liste_a_traiter`);
+    list_a_traiter_.value = response.data.list_of_data;
+
+    console.log(list_a_traiter_);
+
+
     console.log('📡 Données récupérées depuis API et stockées localement');
 
   } catch (error) {
@@ -180,7 +245,6 @@ const send_selected_credit = async () => {
     const response = await api.post('/api/insert_credit_row', {
       row_data: selectedRow.value
     });
-
     console.log("✅ Réponse de l'API :", response.data);
   } catch (error) {
     console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
@@ -195,12 +259,16 @@ const loadAllEncours = async () => {
   for (let offset = 0; offset < 10000; offset += step) {
     await get_encours(offset, step);
   }
+
+  await get_list_a_traiter();
 };
 
 onMounted(async ()=>{
   loadAllEncours();
   const allData = await getAllData();
   list_encours.value = allData;
+  // console.log(allData );
+
   // console.log(allData);
 
   // get_encours(0,10000)

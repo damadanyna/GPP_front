@@ -75,6 +75,24 @@ class Encours:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
+    def get_liste_a_traiter(self):
+        try: 
+            conn = self.db.connect()
+            cursor = conn.cursor()
+            # Offset should be dynamically included in the query
+            select_query = f'SELECT * FROM echange_credit where is_create=false'
+            # select_query = f'SELECT * FROM etat_des_encours'
+            
+            # Execute the query
+            cursor.execute(select_query)
+            rows = cursor.fetchall()
+ 
+            return rows
+
+        except Exception as global_e:
+            error_msg = f"Erreur {global_e}"
+            print("Erreur", global_e)
+            return {'error': error_msg} 
 
     def load_file_in_database(self, filename: str):
         """
@@ -262,9 +280,10 @@ class Encours:
                 DATECH DATE,
                 RANG INT,
                 TAUX DECIMAL(5,2),
-                DATOUV DATE,
+                DATOUV DATE, 
                 group_of VARCHAR(50),
-                Date_enreg DATETIME DEFAULT CURRENT_TIMESTAMP
+                Date_enreg DATETIME DEFAULT CURRENT_TIMESTAMP,
+                is_create BOOLEAN DEFAULT FALSE
             );
             """
             cursor.execute(create_table_query)
@@ -303,7 +322,11 @@ class Encours:
 
             # Générer ID
             new_id = generate_next_id(cursor)
-
+            type_crd = data['Produits']
+            if "AL.AV" in type_crd or "AL.ES" in type_crd:
+                type_crd = "CNA"
+            else:
+                type_crd = "CN"
             # Requête d'insertion
             insert_query = """
             INSERT INTO echange_credit (
@@ -321,16 +344,16 @@ class Encours:
                 data["Nom_client"],
                 2,
                 data["Secteur_d_activité_code"],
-                float(data["Amount"]),
+                float(data["Chiff_affaire"]),
                 cli_na,
                 # data["Secteur_d_activité"],
                 '',
-                data["Produits"],
-                float(data["Total_capital_echus_non_echus"]),
-                parse_date(data["Date_pret"]),
+                type_crd,
+                float(data["Amount"]),
+                parse_date(data["Date_fin_pret"]),
                 rang,
                 float(data["taux_d_interet"]),
-                parse_date(data["Date_fin_pret"]),
+                parse_date(data["Date_pret"]),
                 data["linked_appl_id"]
             )
 

@@ -21,7 +21,7 @@
 <script setup>
 
 import { ref } from 'vue'
-import axios from 'axios';
+import api from '@/api/axios';
 import { usePopupStore } from '../stores/store'
 
 const is_loading=ref(false);
@@ -34,7 +34,7 @@ const load_database = async () => {
   console.log(usePopupStore().loadFile);
 
   try {
-    const response = await axios.post('http://192.168.1.212:5000/api/create_table', {
+    const response = await api.post('/api/create_table', {
       filename: usePopupStore().loadFile
     });
 
