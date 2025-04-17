@@ -35,14 +35,36 @@
 
 
       <v-tabs-window-item value="two">
+        <button class="customize_btn" @click="onRowClick_atraiter_">
+          <v-icon icon="mdi mdi-download-circle" size="24" />
+          Crréer le GPP
+        </button>
         <v-card title="LISTE DES DOSSIERS A TRAITER" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
-          <v-data-table :headers="headers_a_traiter" :items="list_a_traiter_" @click:row="onRowClick"  v-model="selectedItems_a_traiter"  item-value="Numero_pret" :search="search_a_traiter" fixed-header height="400px" item-key="id"  ></v-data-table>
+          <v-data-table :headers="headers_a_traiter" :items="list_a_traiter_"   v-model="selectedItems_a_traiter"  item-value="Numero_pret" :search="search_a_traiter" fixed-header height="400px" item-key="id"  ></v-data-table>
         </v-card>
       </v-tabs-window-item>
     </v-tabs-window>
+
+
+    <!-- Dialogue qui sera contrôlé par la fonction -->
+      <v-dialog v-model="dialog_a_traiter" width="auto">
+        <v-card style=" padding: 10px 20px;">
+          <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
+          <v-card-text>
+            Creer le Fichier d'échange GPP Solidis ?
+          </v-card-text>
+          <v-card-actions>
+            <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
+              <button @click="Create_It" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
+              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
+            </div>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
   </v-card>
 
 </template>
@@ -130,11 +152,31 @@ const headers_a_traiter= [
 
 ]
 
+const header_model=[  { key: "Id", title: "Id" },
+  { key: "Agence", title: "Agence" },
+  { key: "Agec", title: "Agec" },
+  { key: "Compte", title: "Compte" },
+  { key: "Nom", title: "Nom" },
+  { key: "Classt", title: "Classt" },
+  { key: "Codape", title: "Codape" },
+  { key: "Mntcaht", title: "Mntcaht" },
+  { key: "Cli_n_a", title: "Cli_n_a" },
+  { key: "Nature", title: "Nature" },
+  { key: "Typecredit", title: "Typecredit" },
+  { key: "Montant", title: "Montant" },
+  { key: "Datech", title: "Datech" },
+  { key: "Rang", title: "Rang" },
+  { key: "Taux", title: "Taux" },
+  { key: "Datouv", title: "Datouv" },
+  { key: "Group_of", title: "Group_of" },
+  { key: "Date_enreg", title: "Date_enreg" }
+]
 
 const  list_encours=ref([])
 
 // Variables pour le dialogue
 const dialog = ref(false);
+const dialog_a_traiter = ref(false);
 const dialogTitle = ref('');
 const dialogContent = ref('');
 const selectedItems = ref([]); // <- Ici on récupère les items sélectionnés
@@ -183,8 +225,30 @@ const get_list_a_traiter = async ( ) => {
     }
     // Sinon on fait l'appel à l’API
     const response = await api.get(`/api/get_liste_a_traiter`);
-    list_a_traiter_.value = response.data.list_of_data;
 
+    list_a_traiter_.value = response.data.list_of_data;
+    list_a_traiter_.value = list_a_traiter_.value.map(item => {
+      // Créer une copie de l'objet pour ne pas modifier l'original
+        const newItem = { ...item };
+
+        // Formater Datech si elle existe
+        if (newItem.Datech) {
+          const date = new Date(newItem.Datech);
+          newItem.Datech = date.getDate().toString().padStart(2, '0') + '.' +
+                              (date.getMonth() + 1).toString().padStart(2, '0') + '.' +
+                              date.getFullYear();
+        }
+
+        // Formater Datouv si elle existe
+        if (newItem.Datouv) {
+          const date = new Date(newItem.Datouv);
+          newItem.Datouv = date.getDate().toString().padStart(2, '0') + '.' +
+                          (date.getMonth() + 1).toString().padStart(2, '0') + '.' +
+                          date.getFullYear();
+        }
+
+        return newItem;
+      });
     console.log(list_a_traiter_);
 
 
@@ -199,7 +263,7 @@ const get_list_a_traiter = async ( ) => {
 const onRowClick = (event,item) => {
   const rowElement = event.target.closest('tr');
 
-  console.log(item.item);
+  // console.log(item.item);
   selectedRow.value=item.item
 
   // Supprime la classe rouge de toutes les lignes (optionnel si tu veux une seule ligne en rouge)
@@ -222,6 +286,7 @@ const openDialog = (title , content) => {
 };
 const closeDialog = () => {
   dialog.value = false;
+  dialog_a_traiter.value = false;
 };
 const addIt = async () => {
 // console.log(selectedItems);
@@ -230,11 +295,23 @@ const addIt = async () => {
   usePopupStore().show_notification.status=true
   usePopupStore().show_notification.message='Effectué'
   usePopupStore().show_notification.ico='mdi mdi-check'
-
   send_selected_credit()
+  get_list_a_traiter()
 };
+const Create_It = async () => {
+// console.log(selectedItems);
+  create_gpp_()
+  closeDialog()
+  setTimeout(() => {
+    usePopupStore().show_notification.status=true
+    usePopupStore().show_notification.message="Le GPP Crée"
+    usePopupStore().show_notification.ico='mdi mdi-check'
+  }, 400);
+  get_list_a_traiter()
+  downloadCSVFromProxyData(list_a_traiter_.value,header_model)
+  console.log(list_a_traiter_.value);
 
-
+};
 const send_selected_credit = async () => {
   try {
     if (!selectedRow.value) {
@@ -250,10 +327,6 @@ const send_selected_credit = async () => {
     console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
   }
 };
-
-
-// Exemple de transformation
-
 const loadAllEncours = async () => {
   const step = 1000;
   for (let offset = 0; offset < 10000; offset += step) {
@@ -263,8 +336,43 @@ const loadAllEncours = async () => {
   await get_list_a_traiter();
 };
 
+const onRowClick_atraiter_=()=>{
+
+  dialog_a_traiter.value = true;
+
+};
+const create_gpp_ = async () => {
+  try {
+    const response = await api.post("/api/update_is_create");
+
+    const result = response.data;
+
+    if (result.status === "success") {
+      console.log("Mise à jour réussie :", result);
+      console.log(`✔ ${result.updated} ligne(s) mise(s) à jour.\nGroup: ${result.group_of}`);
+      // Optionnel : recharger la liste ici
+    } else {
+      console.error("Erreur lors de la mise à jour :", result.error);
+      console.log(`❌ Erreur : ${result.error}`);
+    }
+
+  } catch (error) {
+    console.error("Erreur API :", error);
+    console.log("❌ Une erreur est survenue lors de l'appel API.");
+  }
+};
+
+// const formatDate=>(dateString) {
+//     if (!dateString) return '';
+//     const date = new Date(dateString);
+//     return date.getDate().toString().padStart(2, '0') +
+//            (date.getMonth() + 1).toString().padStart(2, '0') +
+//            date.getFullYear();
+//   }
+
 onMounted(async ()=>{
   loadAllEncours();
+  get_list_a_traiter()
   const allData = await getAllData();
   list_encours.value = allData;
   // console.log(allData );
@@ -276,6 +384,24 @@ onMounted(async ()=>{
   //   get_encours(0,10000)
   // }, 200);
 })
+function downloadCSVFromProxyData(proxyData, headers) {
+  const dataArray = Array.from(proxyData);
+
+  const csvHeaders = headers.map(h => h.title).join(";");
+  const csvRows = dataArray.map(row =>
+    headers.map(h => `"${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
+  );
+
+  const csvContent = [csvHeaders, ...csvRows].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", "export.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 
 
 </script>
@@ -288,4 +414,14 @@ tbody{
   background-color: rgba(0, 255, 17, 0.265) !important;
   color: white; /* optionnel pour meilleure visibilité */
 }
+.customize_btn {
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  z-index: 10;
+  background: green ;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
   </style>

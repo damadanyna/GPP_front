@@ -143,3 +143,15 @@ def read_file(filename):
         return jsonify({'error': 'File not found'}), 404
     data = encours.read_xlsx_file(filename)
     return jsonify({'data': data})
+
+@api_bp.route('/update_is_create', methods=['POST'])
+def update_is_create():
+    """
+    Route pour mettre à jour les lignes où is_create = false
+    et assigner un group_of aléatoire.
+    """
+    try:
+        result = encours.update_group_and_flag()
+        return jsonify(result), 200 if result.get("status") == "success" else 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

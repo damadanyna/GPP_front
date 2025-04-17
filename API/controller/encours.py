@@ -2,6 +2,8 @@ import os
 from werkzeug.utils import secure_filename
 import openpyxl
 from datetime import datetime
+import random
+import string
 from db.db  import DB 
 
 class Encours:
@@ -86,13 +88,48 @@ class Encours:
             # Execute the query
             cursor.execute(select_query)
             rows = cursor.fetchall()
- 
+        
             return rows
 
         except Exception as global_e:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
+        
+ 
+
+
+    def update_group_and_flag(self): 
+        def random_string(length=12):
+            return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+        try:
+            conn = self.db.connect()
+            cursor = conn.cursor()
+
+            # Génère une seule chaîne aléatoire pour tous les enregistrements mis à jour
+            group_value = random_string()
+
+            update_query = """
+            UPDATE echange_credit
+            SET is_create = true,
+                group_of = %s
+            WHERE is_create = false
+            """
+
+            cursor.execute(update_query, (group_value,))
+            conn.commit()
+
+            print(f"{cursor.rowcount} ligne(s) mise(s) à jour.")
+            return {"status": "success", "updated": cursor.rowcount, "group_of": group_value}
+
+        except Exception as e:
+            print(f"Erreur lors de la mise à jour : {e}")
+            return {"error": str(e)}
+
+        finally:
+            if conn:
+                conn.close()
+
 
     def load_file_in_database(self, filename: str):
         """
@@ -339,7 +376,7 @@ class Encours:
             values = (
                 new_id,
                 data["Agence"],
-                data["Agent_de_gestion"],              # AGEC
+                "EI",              # AGEC
                 compte,
                 data["Nom_client"],
                 2,
