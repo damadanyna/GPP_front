@@ -6,10 +6,14 @@ export const usePopupStore = defineStore('popup', () => {
   const showPopup = ref(false)
   const loadFile=ref(null);
   const show_notification=ref({status:false,message:"null",ico:"null"})
+  const user_access=ref({
+    name:"null",
+    Password:"null"
+  })
 
   const togglePopup = () => {
     showPopup.value = !showPopup.value
   }
 
-  return { showPopup, togglePopup,loadFile,show_notification }
+  return { showPopup, togglePopup,loadFile,show_notification,user_access}
 })
