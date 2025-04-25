@@ -97,6 +97,22 @@ class Encours:
             return {'error': error_msg} 
         
  
+    def get_liste_faites(self):
+        try: 
+            conn = self.db.connect()
+            cursor = conn.cursor()
+            # Offset should be dynamically included in the query
+            select_query = f'SELECT * FROM echange_credit where is_create=true'  
+            # Execute the query
+            cursor.execute(select_query)
+            rows = cursor.fetchall() 
+            return rows 
+        except Exception as global_e:
+            error_msg = f"Erreur {global_e}"
+            print("Erreur", global_e)
+            return {'error': error_msg} 
+        
+ 
 
 
     def update_group_and_flag(self): 
@@ -360,6 +376,7 @@ class Encours:
             # Générer ID
             new_id = generate_next_id(cursor)
             type_crd = data['Produits']
+            print('type_crd',type_crd)
             if "AL.AV" in type_crd or "AL.ES" in type_crd:
                 type_crd = "CNA"
             else:

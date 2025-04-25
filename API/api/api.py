@@ -134,6 +134,42 @@ def get_liste_a_traiter():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/get_liste_faites', methods=['GET'])
+def get_liste_faites():
+    """
+    Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
+    avec support d'un paramètre d'offset.
+    """ 
+    try:  # récupère l'offset de l'URL
+        data = encours.get_liste_faites()
+        # Liste des clés
+        cles =[
+            "Id",
+            "Agence",
+            "Agec",
+            "Compte",
+            "Nom",
+            "Classt",
+            "Codape",
+            "Mntcaht",
+            "Cli_n_a",
+            "Nature",
+            "Typecredit",
+            "Montant",
+            "Datech",
+            "Rang",
+            "Taux",
+            "Datouv",
+            "Group_of",
+            "Date_enreg"
+        ]
+
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/read_file/<filename>', methods=['GET'])
 def read_file(filename):
     """

@@ -44,7 +44,7 @@ const popupStore = usePopupStore()
 
 const listItems = ref([
   {icon:'mdi-cash-plus',title:'Déclarations des Crédits',value:'Declaration_credit',to:'/dec_credit'},
-  {icon:'mdi-cash-fast',title:'Déclarations des Encours',value:'Declaration_encours',to:'/dec_encours'},
+  {icon:'mdi-cash-fast',title:'Historique de Déclarations',value:'Declaration_encours',to:'/dec_encours'},
   {icon:'mdi-receipt-text-clock-outline',title:'Encours',value:'Encours',to:'/etat_encours'},
   {icon:'mdi-account-circle-outline',title:'Account',value:'Utilisateur',to:''},
 ])

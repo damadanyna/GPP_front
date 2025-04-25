@@ -5,6 +5,7 @@ import { ref } from 'vue'
 export const usePopupStore = defineStore('popup', () => {
   const showPopup = ref(false)
   const loadFile=ref(null);
+  const list_a_traiter=ref([])
   const show_notification=ref({status:false,message:"null",ico:"null"})
   const user_access=ref([{
     name:"admin",
@@ -18,5 +19,5 @@ export const usePopupStore = defineStore('popup', () => {
     showPopup.value = !showPopup.value
   }
 
-  return { showPopup, togglePopup,loadFile,show_notification,user_access}
+  return { showPopup, togglePopup,loadFile,show_notification,user_access,list_a_traiter}
 })

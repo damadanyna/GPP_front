@@ -73,7 +73,7 @@
 import api from "@/api/axios";
 import { ref } from "vue";
 import { onMounted } from "vue";
-import { saveData, getData,getAllData } from '@/api/indexDB';
+import { saveData, getData,getAllData, clearData } from '@/api/indexDB';
 import { usePopupStore } from '../stores/store'
 
 
@@ -183,29 +183,44 @@ const selectedItems = ref([]); // <- Ici on récupère les items sélectionnés
 const selectedItems_a_traiter = ref([]); // <- Ici on récupère les items sélectionnés
 const selectedRow = ref(null);
 const list_a_traiter_ = ref(null);
-
+const data_temp=ref([])
 
 const get_encours = async (offset, limit) => {
   try {
-    const cacheKey = `encours_${offset}_${limit}`;
+    // const cacheKey = `encours_${offset}_${limit}`;
 
     // D'abord, on essaie de récupérer depuis IndexedDB
-    const cachedData = await getData(cacheKey);
+    // const cachedData = await getData(cacheKey);
 
     // console.log(cachedData);
-    if (cachedData) {
-      console.log('✅ Données chargées depuis IndexedDB');
-      // list_encours.value = cachedData;
-      return;
-    }
+    // if (cachedData) {
+    //   console.log('✅ Données chargées depuis IndexedDB');
+    //   // list_encours.value = cachedData;
+    //   return;
+    // }
 
     // Sinon on fait l'appel à l’API
     const response = await api.get(`/api/get_encours?offset=${offset}&limit=${limit}`);
-    // list_encours.value = response.data.list_of_data;
+    // data_fetch.value  response.data.list_of_data;
 
     // Sauvegarde dans IndexedDB
-    await saveData(cacheKey, response.data.list_of_data);
-    console.log('📡 Données récupérées depuis API et stockées localement');
+    // const allData = await getAllData();
+    // console.log(response.data.list_of_data.length);
+    // console.log(allData.length);
+
+    for (let index = 0; index < response.data.list_of_data.length; index++) {
+      const element = response.data.list_of_data[index];
+      data_temp.value.push (element);
+      list_encours.value.push (element);
+    }
+
+    // if ( data_temp.value.length > allData.length) {
+    //   await clearData();
+    //   await saveData(cacheKey,response.data.list_of_data.length);
+    //   // console.log('📡 Données récupérées depuis API et stockées localement');
+    //   list_encours.value = data_temp.value;
+
+    // }
 
   } catch (error) {
     console.error("❌ Erreur lors de la récupération des fichiers:", error);
@@ -249,10 +264,12 @@ const get_list_a_traiter = async ( ) => {
 
         return newItem;
       });
-    console.log(list_a_traiter_);
+    // console.log(list_a_traiter_);
+
+    usePopupStore().list_a_traiter=list_a_traiter_.value
 
 
-    console.log('📡 Données récupérées depuis API et stockées localement');
+    console.log('📡 Données récupérées depuis API et stockées localement',list_a_traiter_.value);
 
   } catch (error) {
     console.error("❌ Erreur lors de la récupération des fichiers:", error);
