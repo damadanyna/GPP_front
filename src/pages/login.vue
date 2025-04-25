@@ -14,10 +14,10 @@
 
           <v-form @submit.prevent="login">
             <v-text-field
-              v-model="email"
-              label="Adresse Email"
-              type="email"
-              prepend-inner-icon="mdi-email-outline"
+              v-model="matricule"
+              label="Code d'immatriculation"
+              type="matricule"
+              prepend-inner-icon="mdi-account-outline"
               class="mb-4"
               required
             />
@@ -55,21 +55,36 @@
 <script setup>
 import { ref } from 'vue'
 import Cookies from 'js-cookie'
+import { usePopupStore } from '../stores/store'
 
-const email = ref('')
+const matricule = ref('')
 const password = ref('')
 
 const login = () => {
+  // usePopupStore().user_access.name
   // Simuler un appel d'API
-  console.log('Logging in with:', email.value, password.value)
+  // console.log('Logging in with:', matricule.value, password.value)
 
-  // Simuler la réception d'un token et le stockage dans les cookies
-  Cookies.set('auth_token', 'token_123', { expires: 7 })
+  // console.log( usePopupStore().user_access.name);
+  // console.log( usePopupStore().user_access.password);
 
-  // Lecture du token
-  const token = Cookies.get('auth_token')
-  console.log('Token lu depuis le cookie :', token)
-  window.location.reload()
+  const users = usePopupStore().user_access
+
+
+  for (const user of users) {
+      if (matricule.value === user.name && password.value === user.password) {
+        // Simuler la réception d'un token et le stockage dans les cookies
+        Cookies.set('auth_token', 'token_123', { expires: 7 })
+        // Lecture du token
+        const token = Cookies.get('auth_token')
+        console.log('Token lu depuis le cookie :', token)
+        window.location.reload()
+        return // pour sortir de la fonction après connexion
+      }
+    }
+
+  // window.location.reload()
+
 
   // Redirection ou autre logique ici
 }
