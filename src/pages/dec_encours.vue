@@ -10,13 +10,30 @@
       :key="i"
       :value="group.group"
     >
-      <template v-slot:activator="{ props }">
+
+    <template v-slot:activator="{ props, isOpen }">
+      <v-hover v-slot="{ isHovering, props: hoverProps }">
         <v-list-item
-          v-bind="props"
+          v-bind="{ ...props, ...hoverProps }"
           prepend-icon="mdi-folder"
           :title="cut_string(group.label)"
-        />
-      </template>
+        >
+          <template #append>
+            <!-- Icône de téléchargement visible au hover -->
+            <v-icon @click="download(group.children,group.label)" v-if="isHovering" icon="mdi-arrow-down-bold-circle-outline" style=" color: #00E000;" class="mr-2" />
+
+            <!-- Icône chevron dynamique -->
+            <v-icon
+              :icon="isOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+              class="transition-transform"
+              :class="isOpen ? 'rotate-180' : ''"
+            />
+          </template>
+        </v-list-item>
+      </v-hover>
+    </template>
+
+
 
       <v-list-item>
         <table class="w-full text-sm border-collapse">
@@ -48,6 +65,21 @@
       </v-list-item>
     </v-list-group>
   </v-list>
+      <!-- Dialogue qui sera contrôlé par la fonction -->
+      <v-dialog v-model="dialog_a_traiter" width="auto">
+        <v-card style=" padding: 10px 20px;">
+          <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
+          <v-card-text>
+            {{ dialogTitle }}
+          </v-card-text>
+          <v-card-actions>
+            <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
+              <button @click="downloadCSVFromProxyData()" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
+              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
+            </div>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 </v-card>
 
 
@@ -65,9 +97,42 @@ const open = ref(['Users'])
 //     ['Management', 'mdi-account-multiple-outline'],
 //     ['Settings', 'mdi-cog-outline']
 // ])
+
+const dialogTitle = ref('');
+const dialog = ref(false);
+const dialog_a_traiter = ref(false);
 const list_donne=ref([])
 const list_final=ref([])
+const selectedItems=ref([]);
+const header_model=[  { key: "Id", title: "Id" },
+  { key: "Agence", title: "Agence" },
+  { key: "Agec", title: "Agec" },
+  { key: "Compte", title: "Compte" },
+  { key: "Nom", title: "Nom" },
+  { key: "Classt", title: "Classt" },
+  { key: "Codape", title: "Codape" },
+  { key: "Mntcaht", title: "Mntcaht" },
+  { key: "Cli_n_a", title: "Cli_n_a" },
+  { key: "Nature", title: "Nature" },
+  { key: "Typecredit", title: "Typecredit" },
+  { key: "Montant", title: "Montant" },
+  { key: "Datech", title: "Datech" },
+  { key: "Rang", title: "Rang" },
+  { key: "Taux", title: "Taux" },
+  { key: "Datouv", title: "Datouv" },
+  { key: "Genre", title: "Genre" },
+  { key: "Date_enreg", title: "Date_enreg" }
+]
 
+const openDialog = (title ) => {
+  dialogTitle.value = title;
+  dialog.value = true;
+};
+
+const closeDialog = () => {
+  dialog.value = false;
+  dialog_a_traiter.value = false;
+};
 const get_list_a_traiter = async ( ) => {
   try {
 
@@ -131,6 +196,45 @@ const cut_string = (string) => {
   // if (string.length > 20) {
     return string.substring(0, string.length -3) ;
 
+}
+const download = (data,title) => {
+  openDialog("Télécharger le GPP pour:  "+ title)
+  selectedItems.value=data
+  dialog_a_traiter.value = true;
+  // downloadCSVFromProxyData(data,header_model);
+}
+
+
+function downloadCSVFromProxyData() {
+  closeDialog();
+  const dataArray = Array.from(selectedItems.value);
+
+  const csvHeaders = header_model.map(h => h.title).join(";");
+  const csvRows = dataArray.map(row =>
+  header_model.map(h => `"${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
+  );
+
+  const csvContent = [csvHeaders, ...csvRows].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+
+  // 👉 Générer la date et l'heure au format voulu
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // janvier = 0
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  const formattedDate = `${day}${month}${year}${hours}${minutes}${seconds}`;
+
+  // 👉 Utiliser cette date comme nom de fichier
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", `RGPP_${formattedDate}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 

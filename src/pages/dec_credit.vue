@@ -73,7 +73,7 @@
 import api from "@/api/axios";
 import { ref } from "vue";
 import { onMounted } from "vue";
-import { saveData, getData,getAllData, clearData } from '@/api/indexDB';
+import { getData,getAllData } from '@/api/indexDB';
 import { usePopupStore } from '../stores/store'
 
 
