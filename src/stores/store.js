@@ -8,12 +8,14 @@ export const usePopupStore = defineStore('popup', () => {
   const list_a_traiter=ref([])
   const show_notification=ref({status:false,message:"null",ico:"null"})
   const user_access=ref([{
-    name:"admin",
-    password:"0000"
-  },{
-    name:"mdp",
-    password:"d"
-  }])
+    name:"rgpp-onisoa",
+    password:"123456"
+  },
+  // {
+  //   name:"mdp",
+  //   password:"d"
+  // }
+])
 
   const togglePopup = () => {
     showPopup.value = !showPopup.value

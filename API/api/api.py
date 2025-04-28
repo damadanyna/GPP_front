@@ -89,8 +89,8 @@ def get_all_dfe_database():
             'Date_fin_pret', 'Nom_client', 'Produits', 'Amount', 'Duree_Remboursement',
             'taux_d_interet', 'Nombre_de_jour_retard', 'payment_date', 'Statut_du_client',
             'Capital_Non_appele_ech', 'Capital_Appele_Non_verse', 'Total_capital_echus_non_echus',
-            'Total_interet_echus', 'OD Pen', 'OD & PEN', 'Solde du client', 'Agent_de_gestion',
-            'Secteur_d_activité', 'Secteur_d_activité_code', '.Agent_de_gestion', 'Chiff_affaire', 'Code_Garantie',
+            'Total_interet_echus', 'OD Pen', 'OD & PEN', 'Solde du client', 'Genre',
+            'Secteur_d_activité', 'Secteur_d_activité_code', 'Agent_de_gestion', 'Chiff_affaire', 'Code_Garantie',
             'Valeur_garantie', 'arr_status'
         ]
         liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
@@ -124,6 +124,8 @@ def get_liste_a_traiter():
             "Rang",
             "Taux",
             "Datouv",
+            "Genre",
+            "Creating_date",
             "Group_of",
             "Date_enreg"
         ]
@@ -160,11 +162,13 @@ def get_liste_faites():
             "Rang",
             "Taux",
             "Datouv",
+            "Genre",
+            "Creating_date",
             "Group_of",
             "Date_enreg"
         ]
 
-        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data] 
         return jsonify({'list_of_data': liste_dictionnaires}) 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -190,4 +194,4 @@ def update_is_create():
         result = encours.update_group_and_flag()
         return jsonify(result), 200 if result.get("status") == "success" else 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500 

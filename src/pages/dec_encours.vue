@@ -61,10 +61,10 @@ import { onMounted } from "vue";
 import { ref } from "vue";
 // Home component logic
 const open = ref(['Users'])
-const  admins=ref( [
-    ['Management', 'mdi-account-multiple-outline'],
-    ['Settings', 'mdi-cog-outline']
-])
+// const  admins=ref( [
+//     ['Management', 'mdi-account-multiple-outline'],
+//     ['Settings', 'mdi-cog-outline']
+// ])
 const list_donne=ref([])
 const list_final=ref([])
 
@@ -118,9 +118,9 @@ const groupArray = (data) => {
   }
 
   // Construire la liste finale avec la structure demandée
-  const result = Object.entries(groupedMap).map(([group, children], index) => ({
+  const result = Object.entries(groupedMap).map(([group, children]) => ({
     group: group,
-    label: `group ${index + 1}`,
+    label: children[0].Creating_date,
     children: children
   }))
 

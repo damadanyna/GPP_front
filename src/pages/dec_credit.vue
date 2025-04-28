@@ -115,11 +115,10 @@ const headers= [
 { key: 'Total_interet_echus', title: 'Total_interet_echus' },
 { key: 'OD Pen', title: 'OD Pen' },
 { key: 'OD & PEN', title: 'OD & PEN' },
-{ key: 'Solde du client', title: 'Solde du client' },
-{ key: 'Agent_de_gestion', title: 'Agent_de_gestion' },
+{ key: 'Genre', title: 'Genre' },
 { key: 'Secteur_d_activité', title: 'Secteur_d_activité' },
 { key: 'Secteur_d_activité_code', title: 'Secteur_d_activité_code' },
-{ key: '.Agent_de_gestion', title: '.Agent_de_gestion' },
+{ key: 'Agent_de_gestion', title: 'Agent_de_gestion' },
 { key: 'Code_Garantie', title: 'Code_Garantie' },
 { key: 'Valeur_garantie', title: 'Valeur_garantie' },
 { key: 'arr_status', title: 'arr_status' }
@@ -147,6 +146,7 @@ const headers_a_traiter= [
   { key: "Rang", title: "Rang" },
   { key: "Taux", title: "Taux" },
   { key: "Datouv", title: "Datouv" },
+  { key: "Genre", title: "Genre" },
   { key: "Group_of", title: "Group_of" },
   { key: "Date_enreg", title: "Date_enreg" }
 
@@ -168,7 +168,7 @@ const header_model=[  { key: "Id", title: "Id" },
   { key: "Rang", title: "Rang" },
   { key: "Taux", title: "Taux" },
   { key: "Datouv", title: "Datouv" },
-  { key: "Group_of", title: "Group_of" },
+  { key: "Genre", title: "Genre" },
   { key: "Date_enreg", title: "Date_enreg" }
 ]
 
@@ -345,7 +345,7 @@ const send_selected_credit = async () => {
   }
 };
 const loadAllEncours = async () => {
-  const step = 1000;
+  const step = 100;
   for (let offset = 0; offset < 10000; offset += step) {
     await get_encours(offset, step);
   }

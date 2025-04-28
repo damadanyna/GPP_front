@@ -128,11 +128,12 @@ class Encours:
             update_query = """
             UPDATE echange_credit
             SET is_create = true,
-                group_of = %s
+                group_of = %s,
+                creating_date=%s
             WHERE is_create = false
             """
 
-            cursor.execute(update_query, (group_value,))
+            cursor.execute(update_query, (group_value,datetime.now()))
             conn.commit()
 
             print(f"{cursor.rowcount} ligne(s) mise(s) à jour.")
@@ -146,6 +147,7 @@ class Encours:
             if conn:
                 conn.close()
 
+ 
 
     def load_file_in_database(self, filename: str):
         """
@@ -333,7 +335,9 @@ class Encours:
                 DATECH DATE,
                 RANG INT,
                 TAUX DECIMAL(5,2),
-                DATOUV DATE, 
+                DATOUV DATE,  
+                GENRE VARCHAR(10),
+                Creating_date DATETIME,
                 group_of VARCHAR(50),
                 Date_enreg DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_create BOOLEAN DEFAULT FALSE
@@ -376,18 +380,21 @@ class Encours:
             # Générer ID
             new_id = generate_next_id(cursor)
             type_crd = data['Produits']
-            print('type_crd',type_crd)
+            
+            if data["Chiff_affaire"]  == ' ' or data["Chiff_affaire"]  is None:
+                data["Chiff_affaire"] =0 
+            print('type_crd', data["Chiff_affaire"])
             if "AL.AV" in type_crd or "AL.ES" in type_crd:
                 type_crd = "CNA"
             else:
-                type_crd = "CN"
+                type_crd = "CA"
             # Requête d'insertion
             insert_query = """
             INSERT INTO echange_credit (
                 ID, AGENCE, AGEC, COMPTE, NOM, CLASST, CODAPE, MNTCAHT, CLI_N_A,
-                NATURE, TYPECREDIT, MONTANT, DATECH, RANG, TAUX, DATOUV, group_of
+                NATURE, TYPECREDIT, MONTANT, DATECH, RANG, TAUX, DATOUV,GENRE,creating_date, group_of
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s, %s, %s
             )
             """
             values = (
@@ -408,6 +415,8 @@ class Encours:
                 rang,
                 float(data["taux_d_interet"]),
                 parse_date(data["Date_pret"]),
+                data["Genre"],
+                '',
                 data["linked_appl_id"]
             )
 
