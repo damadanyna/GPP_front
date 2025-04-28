@@ -78,7 +78,7 @@ const login = () => {
         // Lecture du token
         const token = Cookies.get('auth_token')
         console.log('Token lu depuis le cookie :', token)
-        window.location.reload()
+        window.location.replace('/dashboard')
         return // pour sortir de la fonction après connexion
       }
     }
