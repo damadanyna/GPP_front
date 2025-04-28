@@ -14,7 +14,7 @@
         <v-list-item
           v-bind="props"
           prepend-icon="mdi-folder"
-          :title="group.label"
+          :title="cut_string(group.label)"
         />
       </template>
 
@@ -127,6 +127,11 @@ const groupArray = (data) => {
   return result
 }
 
+const cut_string = (string) => {
+  // if (string.length > 20) {
+    return string.substring(0, string.length -3) ;
+
+}
 
 
 onMounted(()=>{
