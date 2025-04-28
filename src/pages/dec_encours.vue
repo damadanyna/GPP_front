@@ -6,7 +6,7 @@
     <v-card class="mx-auto">
   <v-list v-model:opened="open">
     <v-list-group
-      v-for="(group, i) in list_final"
+    v-for="(group, i) in [...list_final].reverse()"
       :key="i"
       :value="group.group"
     >
