@@ -412,12 +412,26 @@ function downloadCSVFromProxyData(proxyData, headers) {
   const csvContent = [csvHeaders, ...csvRows].join("\n");
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
+
+  // 👉 Générer la date et l'heure au format voulu
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // janvier = 0
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  const formattedDate = `${day}${month}${year}${hours}${minutes}${seconds}`;
+
+  // 👉 Utiliser cette date comme nom de fichier
   link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", "export.csv");
+  link.setAttribute("download", `RGPP_${formattedDate}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
+
 
 
 
