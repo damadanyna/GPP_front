@@ -9,12 +9,14 @@ export const usePopupStore = defineStore('popup', () => {
   const show_notification=ref({status:false,message:"null",ico:"null"})
   const user_access=ref([{
     name:"rgpp-onisoa",
-    password:"123456"
+    password:"123456",
+    app:"gpp"
   },
-  // {
-  //   name:"mdp",
-  //   password:"d"
-  // }
+  {
+    name:"a",
+    password:"a",
+    app:"cdi"
+  },
 ])
 
   const togglePopup = () => {

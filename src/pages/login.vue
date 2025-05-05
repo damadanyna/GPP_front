@@ -75,10 +75,11 @@ const login = () => {
       if (matricule.value === user.name && password.value === user.password) {
         // Simuler la réception d'un token et le stockage dans les cookies
         Cookies.set('auth_token', 'token_123', { expires: 7 })
+        Cookies.set('app', user.app, { expires: 7 })
         // Lecture du token
         const token = Cookies.get('auth_token')
         console.log('Token lu depuis le cookie :', token)
-        window.location.replace('/dashboard')
+        window.location.replace('/'+user.app+'/dec_credit')
         return // pour sortir de la fonction après connexion
       }
     }

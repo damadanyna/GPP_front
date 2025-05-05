@@ -69,7 +69,7 @@
 <script setup>
 import { ref } from 'vue'
 import api from '@/api/axios'
-import { usePopupStore } from '../stores/store'
+import { usePopupStore } from '../../stores/store'
 
 const fileInput = ref(null)
 const files_data = ref(null)
