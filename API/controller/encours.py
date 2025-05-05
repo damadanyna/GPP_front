@@ -13,16 +13,25 @@ class Encours:
         self.db = DB() 
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
-
-    def upload_file(self, file):
+    def upload_file(self, file, app_name):
         """
-        Cette méthode permet de télécharger un fichier et de l'enregistrer dans le dossier 'load_file'
+        Cette méthode permet de télécharger un fichier et de l'enregistrer dans le dossier 'load_file/app'
+        si un 'app' est fourni, sinon dans 'load_file'.
         """
         if file and self.allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            filepath = os.path.join(self.upload_folder, filename)
+
+            # Détermine le chemin du dossier où enregistrer le fichier, selon l'app (ou le dossier par défaut)
+            folder_path = os.path.join(self.upload_folder, app_name) if app_name else self.upload_folder
+
+            # Créer le dossier s'il n'existe pas
+            os.makedirs(folder_path, exist_ok=True)
+
+            filepath = os.path.join(folder_path, filename)
             file.save(filepath)
+
             return {'message': 'File successfully uploaded', 'filename': filename}
+        
         return {'error': 'Invalid file format'}
 
     def allowed_file(self, filename):
@@ -32,18 +41,27 @@ class Encours:
         ALLOWED_EXTENSIONS = {'xlsx'}
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-    def show_files(self): 
+    def show_files(self, app=None): 
         """
-        Récupère la liste des fichiers xlsx dans le dossier 'load_file'
+        Récupère la liste des fichiers xlsx dans le sous-dossier 'load_file/app'
         et les retourne sous forme d'objets : {"used": False, "file_name": "nom.xlsx"}
         """
         files = []
-        for filename in os.listdir(self.upload_folder):
+        
+        # Construction du chemin vers le sous-dossier, en utilisant 'app' s'il est fourni
+        folder_path = os.path.join(self.upload_folder, app) if app else self.upload_folder
+
+        # Vérifie que le dossier existe
+        if not os.path.exists(folder_path):
+            return []  # Ou éventuellement retourner une erreur personnalisée
+
+        for filename in os.listdir(folder_path):
             if filename.endswith('.xlsx'):
                 files.append({
                     "used": False,
                     "file_name": filename
                 })
+        
         return files
 
 
@@ -147,17 +165,38 @@ class Encours:
             if conn:
                 conn.close()
 
- 
+    def merge_duplicate_columns(self, headers, data):
+        from collections import defaultdict
+        column_indices = defaultdict(list)
 
-    def load_file_in_database(self, filename: str):
+        for idx, col in enumerate(headers):
+            column_indices[col].append(idx)
+
+        unique_headers = list(column_indices.keys())
+        merged_data = []
+        for row in data[1:]:
+            merged_row = []
+            for col in unique_headers:
+                indices = column_indices[col]
+                merged_values = [str(row[i]).strip() for i in indices if i < len(row) and row[i] not in [None, '']]
+                merged_row.append(','.join(merged_values))
+            merged_data.append(merged_row)
+
+        return unique_headers, merged_data
+
+
+    def load_file_in_database(self, filename: str,app_name: str):
         """
         Charge un fichier Excel depuis './load_file/{filename}' et insère les données dans la base.
         """
         try:
-            # Informations sur le fichier
-            print(f"[INFO] Nom du fichier demandé : {filename}")
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            filepath = os.path.join(project_root, 'load_file', filename)
+            folder_path = os.path.join(project_root, 'load_file', app_name)
+            filepath = os.path.join(folder_path, filename)
+            # Informations sur le fichier
+            # print(f"[INFO] Nom du fichier demandé : {filename}")
+            # project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            # filepath = os.path.join(project_root, 'load_file', filename)
             print(f"[INFO] Chemin complet du fichier : {filepath}")
             
             # Vérification du répertoire courant
@@ -216,7 +255,10 @@ class Encours:
 
             try:
                 headers = data[0]
-                table_name = 'etat_des_encours'
+                if app_name == 'cdi':
+                    table_name = 'eb_chq_in'
+                elif app_name == 'gpp':
+                    table_name = 'etat_des_encours'
                 
                     # Vidage de la table
                 print(f'[INFO] Vidage de la table {table_name}')
@@ -225,14 +267,30 @@ class Encours:
                 cursor.execute(drop_data_in_table)
                 print('[INFO] Table vidée avec succès')
 
+
+                # === APPLICATION JUSTE AVANT LA CRÉATION DE LA TABLE ===
+                print('[INFO] Vérification et fusion des colonnes en double')
+                headers, data_rows = self.merge_duplicate_columns(headers, data)
+                data = [headers] + data_rows
+
                 # Création de la table
                 print(f'[INFO] Création/vérification de la table {table_name}')
                 columns = ', '.join([f'`{col}` TEXT' for col in headers])
-                
                 create_query = f'CREATE TABLE IF NOT EXISTS `{table_name}` ({columns});'
                 print(f'[INFO] Requête de création : {create_query}')
                 cursor.execute(create_query)
                 print('[INFO] Table créée/vérifiée avec succès')
+
+                # Création de la table
+                # print(f'[INFO] Création/vérification de la table {table_name}')
+                # columns = ', '.join([f'`{col}` TEXT' for col in headers])
+                
+                
+                
+                # create_query = f'CREATE TABLE IF NOT EXISTS `{table_name}` ({columns});'
+                # print(f'[INFO] Requête de création : {create_query}')
+                # cursor.execute(create_query)
+                # print('[INFO] Table créée/vérifiée avec succès')
                 
             
 
@@ -297,6 +355,19 @@ class Encours:
             import traceback
             print(f"[DEBUG] Traceback complet : {traceback.format_exc()}")
             return {'error': error_msg}
+        
+    def clean_filename(filename):
+    # Enlever l'extension
+        name = os.path.splitext(filename)[0]
+        # Remplacer les symboles par _
+        name = re.sub(r'[^a-zA-Z0-9]', '_', name)
+        # Supprimer les chiffres
+        name = re.sub(r'\d+', '', name)
+        # Nettoyer les underscores multiples (_ inutile)
+        name = re.sub(r'_+', '_', name)
+        # Supprimer un éventuel underscore au début/fin
+        return name.strip('_')
+
     def insert_into_echange_credit(self, data): 
         def generate_next_id(cursor):
             cursor.execute("SELECT ID FROM echange_credit ORDER BY ID DESC LIMIT 1")

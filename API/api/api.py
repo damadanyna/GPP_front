@@ -20,35 +20,46 @@ def test_route():
 @api_bp.route('/upload', methods=['POST'])
 def upload():
     """
-    Endpoint pour uploader un fichier via Postman
+    Endpoint pour uploader un fichier via Postman ou un formulaire.
+    Le champ 'app' est utilisé pour déterminer dans quel sous-dossier enregistrer le fichier.
     """
     if 'file' not in request.files:
         return jsonify({'error': 'Aucun fichier trouvé'}), 400
-    
+
     file = request.files['file']
-    result = encours.upload_file(file)
+    app_name = request.form.get('app')  # Récupère le paramètre 'app'
+    print(app_name)
+    result = encours.upload_file(file, app_name)  # Passe le paramètre à la méthode
+
     return jsonify(result), 200 if 'message' in result else 400
+
 @api_bp.route('/create_table', methods=['POST'])
 def create_table():
     """
-    Route pour générer une table à partir d'un nom de fichier (string) déjà uploadé.
+    Route pour générer une table à partir d'un nom de fichier (string) déjà uploadé,
+    dans un sous-dossier correspondant à 'app'.
     """ 
     data = request.get_json()
-    if not data or 'filename' not in data:
-        return jsonify({'error': 'Aucun nom de fichier fourni'}), 400
 
-    print(data['filename'])
-    # return jsonify(data['filename']) 
+    if not data or 'filename' not in data or 'app' not in data:
+        return jsonify({'error': 'Paramètres manquants : filename et app requis'}), 400
+
     filename = data['filename']
-    result = encours.load_file_in_database(filename)
+    app_name = data['app']
+
+    print(f"Création de table pour le fichier : {filename} dans le dossier : {app_name}")
+
+    result = encours.load_file_in_database(filename, app_name)
     return jsonify(result), 200 if 'message' in result else 400
 
-@api_bp.route('/show_files', methods=['GET'])
+
+@api_bp.route('/show_files', methods=['GET']) 
 def show_files():
     """
     Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file'.
     """
-    files = encours.show_files()
+    app_name = request.args.get('app')  # Récupère le paramètre 'app' de la requête GET
+    files = encours.show_files(app=app_name)  # Passe le paramètre à ta fonction
     return jsonify({'files': files})
 
 @api_bp.route('/insert_credit_row', methods=['POST'])

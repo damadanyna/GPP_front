@@ -70,6 +70,7 @@
 import { ref } from 'vue'
 import api from '@/api/axios'
 import { usePopupStore } from '../../stores/store'
+import Cookies from 'js-cookie'
 
 const fileInput = ref(null)
 const files_data = ref(null)
@@ -80,7 +81,7 @@ const triggerFileInput = () => {
   fileInput.value.click()
 }
 const list_file=ref([])
-
+const app_type=ref( Cookies.get('app'))
 // Créer une variable réactive pour stocker le nom du fichier
 const file_name = ref("Fichier Local du Système");
 // Fonction pour gérer l'upload (facultatif)
@@ -125,6 +126,7 @@ const uploadFile = () => {
 
   const formData = new FormData();
   formData.append('file', files_data.value);
+  formData.append('app',  app_type.value);
 
   api.post('/api/upload', formData, {
     headers: {
@@ -144,7 +146,11 @@ const uploadFile = () => {
 // Méthode pour afficher les fichiers
 const showFiles = async () => {
   try {
-    const response = await api.get('/api/show_files');
+    const response = await api.get('/api/show_files', {
+      params: {
+        app:app_type.value
+      }
+    });
     console.log(response.data.files);
     list_file.value=response.data.files// Affichage des fichiers reçus
   } catch (error) {

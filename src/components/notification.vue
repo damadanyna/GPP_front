@@ -23,7 +23,10 @@
 import { ref } from 'vue'
 import api from '@/api/axios';
 import { usePopupStore } from '../stores/store'
+import Cookies from 'js-cookie'
+import { onMounted } from 'vue';
 
+const app_type=ref( Cookies.get('app'))
 const is_loading=ref(false);
 const toogle_popup=()=>{
   usePopupStore().togglePopup()
@@ -33,9 +36,11 @@ const load_database = async () => {
   is_loading.value = true;
   console.log(usePopupStore().loadFile);
 
+
   try {
     const response = await api.post('/api/create_table', {
-      filename: usePopupStore().loadFile
+      filename: usePopupStore().loadFile,
+      app:app_type.value
     });
 
     console.log("Résultat de l'insertion :", response.data);
@@ -48,6 +53,10 @@ const load_database = async () => {
   }, 2000);
 };
 
+
+onMounted(()=>{
+  app_type.value=Cookies.get('app')
+})
 
 </script>
 
