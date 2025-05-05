@@ -77,15 +77,22 @@ const listItems = ref([{
         type: 'gpp'
     },
     {
-        icon: 'mdi-receipt-text-clock-outline',
-        title: 'Encours',
-        value: 'Encours',
+        icon: ' mdi-clipboard-list-outline',
+        title: 'List CDI',
+      value: 'List CDI',
+        to: '/' + Cookies.get('app') + '/list_cdi',
+        type: 'cdi'
+    },
+    {
+        icon: 'mdi-file-chart-outline',
+        title: 'Fichier',
+        value: 'Fichier',
         to: '/' + Cookies.get('app') + '/cdi_import_file',
         type: 'cdi'
     },
     {
         icon: 'mdi-account-circle-outline',
-        title: 'Account',
+        title: 'Quitter',
         value: 'Utilisateur',
         to: '',
         type: 'all'

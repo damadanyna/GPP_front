@@ -4,7 +4,9 @@ import openpyxl
 from datetime import datetime
 import random
 import string
-from db.db  import DB 
+from db.db  import DB
+import pandas as pd
+ 
 
 class Encours:
     def __init__(self):
@@ -65,17 +67,17 @@ class Encours:
         return files
 
 
-    def read_xlsx_file(self, filename):
-        """
-        Lire le fichier xlsx et récupérer son contenu.
-        """
-        filepath = os.path.join(self.upload_folder, filename)
-        workbook = openpyxl.load_workbook(filepath)
-        sheet = workbook.active
-        data = []
-        for row in sheet.iter_rows(values_only=True):
-            data.append(row)
-        return data
+    # def read_xlsx_file(self, filename):
+    #     """
+    #     Lire le fichier xlsx et récupérer son contenu.
+    #     """
+    #     filepath = os.path.join(self.upload_folder, filename)
+    #     workbook = openpyxl.load_workbook(filepath)
+    #     sheet = workbook.active
+    #     data = []
+    #     for row in sheet.iter_rows(values_only=True):
+    #         data.append(row)
+    #     return data
     
     def get_all_dfe_database(self, offset,limit):
         try: 
@@ -83,6 +85,24 @@ class Encours:
             cursor = conn.cursor()
             # Offset should be dynamically included in the query
             select_query = f'SELECT * FROM etat_des_encours LIMIT {limit} OFFSET {offset}'
+            # select_query = f'SELECT * FROM etat_des_encours'
+            
+            # Execute the query
+            cursor.execute(select_query)
+            rows = cursor.fetchall()
+ 
+            return rows
+
+        except Exception as global_e:
+            error_msg = f"Erreur {global_e}"
+            print("Erreur", global_e)
+            return {'error': error_msg} 
+    def get_all_cdi_database(self, offset,limit):
+        try: 
+            conn = self.db.connect()
+            cursor = conn.cursor()
+            # Offset should be dynamically included in the query
+            select_query = f'SELECT * FROM eb_chq_in  where RejectCode is not null LIMIT {limit} OFFSET {offset}'
             # select_query = f'SELECT * FROM etat_des_encours'
             
             # Execute the query
@@ -183,8 +203,7 @@ class Encours:
             merged_data.append(merged_row)
 
         return unique_headers, merged_data
-
-
+     
     def load_file_in_database(self, filename: str,app_name: str):
         """
         Charge un fichier Excel depuis './load_file/{filename}' et insère les données dans la base.
@@ -193,17 +212,11 @@ class Encours:
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             folder_path = os.path.join(project_root, 'load_file', app_name)
             filepath = os.path.join(folder_path, filename)
-            # Informations sur le fichier
-            # print(f"[INFO] Nom du fichier demandé : {filename}")
-            # project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            # filepath = os.path.join(project_root, 'load_file', filename)
+            # Informations sur le fichier 
             print(f"[INFO] Chemin complet du fichier : {filepath}")
             
             # Vérification du répertoire courant
-            current_dir = os.getcwd()
-            print(f"[INFO] Répertoire d'exécution actuel : {current_dir}")
-            print(f"[INFO] Répertoire racine du projet : {project_root}")
-            print(f"[INFO] Répertoire des fichiers : {os.path.join(project_root, 'load_file')}")
+            current_dir = os.getcwd() 
             
             # Liste des fichiers dans le répertoire de chargement
             load_dir = os.path.join(project_root, 'load_file')
@@ -223,7 +236,10 @@ class Encours:
             
             # Lecture du fichier avec gestion d'erreur détaillée
             try:
+                
                 data = self.read_xlsx_file(filepath)
+
+                
                 if data:
                     print(f"[INFO] Lecture réussie. Nombre de lignes : {len(data)}")
                     print(f"[INFO] Entêtes détectées : {data[0] if data else 'Aucune'}")
@@ -261,41 +277,19 @@ class Encours:
                     table_name = 'etat_des_encours'
                 
                     # Vidage de la table
-                print(f'[INFO] Vidage de la table {table_name}')
                 drop_data_in_table = f'DROP TABLE IF EXISTS `{table_name}`;'
-                print(f'[INFO] Requête de vidage : {drop_data_in_table}')
                 cursor.execute(drop_data_in_table)
-                print('[INFO] Table vidée avec succès')
-
-
+ 
                 # === APPLICATION JUSTE AVANT LA CRÉATION DE LA TABLE ===
-                print('[INFO] Vérification et fusion des colonnes en double')
                 headers, data_rows = self.merge_duplicate_columns(headers, data)
                 data = [headers] + data_rows
-
+                
                 # Création de la table
-                print(f'[INFO] Création/vérification de la table {table_name}')
                 columns = ', '.join([f'`{col}` TEXT' for col in headers])
                 create_query = f'CREATE TABLE IF NOT EXISTS `{table_name}` ({columns});'
-                print(f'[INFO] Requête de création : {create_query}')
                 cursor.execute(create_query)
-                print('[INFO] Table créée/vérifiée avec succès')
-
-                # Création de la table
-                # print(f'[INFO] Création/vérification de la table {table_name}')
-                # columns = ', '.join([f'`{col}` TEXT' for col in headers])
-                
-                
-                
-                # create_query = f'CREATE TABLE IF NOT EXISTS `{table_name}` ({columns});'
-                # print(f'[INFO] Requête de création : {create_query}')
-                # cursor.execute(create_query)
-                # print('[INFO] Table créée/vérifiée avec succès')
-                
             
-
                 # Insertion des données
-                print(f'[INFO] Début de l\'insertion des données ({len(data)-1} lignes)')
                 for i, row in enumerate(data[1:], 1):
                     try:
                         placeholders = ', '.join(['%s'] * len(row))
@@ -367,6 +361,17 @@ class Encours:
         name = re.sub(r'_+', '_', name)
         # Supprimer un éventuel underscore au début/fin
         return name.strip('_')
+    
+    def read_xlsx_file(self, filepath: str):
+        df = pd.read_excel(filepath, dtype=str, engine='openpyxl')
+
+        # Supprimer les colonnes ayant des noms dupliqués, ne garder que la première occurrence
+        df = df.loc[:, ~df.columns.duplicated(keep='first')]
+
+        # Convertir le DataFrame en liste
+        data = [df.columns.tolist()] + df.fillna('').values.tolist()
+        return data
+
 
     def insert_into_echange_credit(self, data): 
         def generate_next_id(cursor):

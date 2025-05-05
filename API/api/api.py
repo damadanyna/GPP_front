@@ -109,6 +109,37 @@ def get_all_dfe_database():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@api_bp.route('/get_list_cdi', methods=['GET'])
+def get_all_CDI():
+    """
+    Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
+    avec support d'un paramètre d'offset.
+    """
+    offset = int(request.args.get('offset', 0))
+    limit = int(request.args.get('limit', 100))  
+    print (f"offset: {offset}, limit: {limit}")
+    try:  # récupère l'offset de l'URL
+        data = encours.get_all_cdi_database(offset=offset,limit=limit)
+        # Liste des clés
+        cles = [
+            'ID','ID.1', 'ErrorMessage', 'ProcessStatus', 'ProcessDate', 'ValidationStatus',
+            'OrderingBank', 'OrderingBranch', 'VoucherNumber', 'RecordType', 'PaymentRef',
+            'ChequeType', 'ChequeAmt', 'ChequeNumber', 'OrderingRib', 'OrderingName',
+            'OrderingAddr', 'BeneficiaryBank', 'BeneficiaryBranch', 'BeneficiaryRib',
+            'BeneficiaryName', 'BeneficiaryAddr', 'DateChqIssue', 'PaymentDetails',
+            'RepresentReason', 'ClearanceDate', 'DatePresented', 'SettlementDate',
+            'RejectCode', 'CanRcpFile', 'FtId', 'OlbFtId', 'RevOlbFt', 'HoldIntmCdtFt',
+            'OVERRIDE', 'RECORD.STATUS', 'CURR.NO', 'INPUTTER', 'DATE.TIME', 'AUTHORISER',
+            'CO.CODE', 'DEPT.CODE', 'AUDITOR.CODE', 'AUDIT.DATE.TIME'
+        ]
+
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/get_liste_a_traiter', methods=['GET'])
 def get_liste_a_traiter():
     """
