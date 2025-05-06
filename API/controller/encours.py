@@ -102,7 +102,7 @@ class Encours:
             conn = self.db.connect()
             cursor = conn.cursor()
             # Offset should be dynamically included in the query
-            select_query = f'SELECT * FROM eb_chq_in  where RejectCode is not null LIMIT {limit} OFFSET {offset}'
+            select_query = f'SELECT * FROM eb_chq_in  where RejectCode !=""'
             # select_query = f'SELECT * FROM etat_des_encours'
             
             # Execute the query

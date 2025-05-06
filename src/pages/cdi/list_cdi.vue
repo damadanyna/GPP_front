@@ -17,22 +17,42 @@
             <template v-slot:item.ID="{ item }">
               {{ item.ID ? item.ID.slice(0, 2) : '' }}
             </template>
+
+            <template #item.index="{ index }">
+              {{ index + 1 }}
+            </template>
           </v-data-table>
         </v-card>
       </v-tabs-window-item>
 
-      <!-- Dialogue qui sera contrôlé par la fonction -->
+      <!-- Dialogue qui affiche un formulaire en lecture seule -->
       <v-dialog v-model="dialog" width="auto">
-        <v-card style=" padding: 10px 20px;">
-          <v-card-title style=" font-size: 12px;">{{ dialogTitle }}</v-card-title>
+        <v-card style="padding: 10px 20px; max-height: 90vh; overflow-y: auto;">
+          <v-col>
+            <v-card-title style="font-size: 12px;">{{ dialogTitle }}</v-card-title>
+            <v-card-title style="font-size: 24; font-weight: bold;color: #FF5555;">{{ check_type(dialogData) }}</v-card-title>
+          </v-col>
           <v-card-text>
-            {{ dialogContent }}
+            <v-form>
+              <v-container>
+                <v-row dense>
+                  <v-col cols="12" sm="6" md="3" v-for="(value, key) in dialogData" :key="key">
+                    <v-text-field
+                      :label="key"
+                      :model-value="value"
+                      readonly
+                      dense
+                      variant="outlined"
+                    />
+                  </v-col>
+                </v-row>
+              </v-container>
+            </v-form>
           </v-card-text>
           <v-card-actions>
-            <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
-              <button @click="addIt()" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
-              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
-            </div>
+            <v-spacer></v-spacer>
+            <v-btn @click="addIt" color="red" variant="flat" class="ml-2">Oui</v-btn>
+            <v-btn @click="closeDialog" color="green" variant="flat" class="ml-2">Non</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -54,24 +74,21 @@
     </v-tabs-window>
 
 
-    <!-- Dialogue qui sera contrôlé par la fonction -->
-      <v-dialog v-model="dialog_a_traiter" width="auto">
-        <v-card style=" padding: 10px 20px;">
-          <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
-          <v-card-text>
-            Creer le Fichier d'échange GPP Solidis ?
-          </v-card-text>
-          <v-card-actions>
-            <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
-              <button @click="Create_It" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
-              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
-            </div>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
+    <v-dialog v-model="dialog_a_traiter" width="auto">
+      <v-card style=" padding: 10px 20px;">
+        <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
+        <v-card-text>
+          Creer le Fichier d'échange GPP Solidis ?
+        </v-card-text>
+        <v-card-actions>
+          <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
+            <button @click="Create_It" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
+            <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
+          </div>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
-
 </template>
 
 <script setup>
@@ -97,27 +114,29 @@ const headers= [
     align: 'start',
     sortable: false,
   },
+    { title: '#', value: 'index', sortable: false },
     // { key: 'ID', title: 'ID' },
     // { key: 'ID.1', title: 'ID.1' },
     // { key: 'ErrorMessage', title: 'ErrorMessage' },
+
+    { key: 'BeneficiaryName', title: 'BeneficiaryName' },
+    { key: 'OrderingBank', title: 'OrderingBank' },
+    { key: 'ChequeAmt', title: 'ChequeAmt' },
+    { key: 'ChequeNumber', title: 'ChequeNumber' },
+    { key: 'ChequeType', title: 'ChequeType' },
     { key: 'ProcessStatus', title: 'ProcessStatus' },
     { key: 'ProcessDate', title: 'ProcessDate' },
     { key: 'ValidationStatus', title: 'ValidationStatus' },
-    { key: 'OrderingBank', title: 'OrderingBank' },
     { key: 'OrderingBranch', title: 'OrderingBranch' },
     { key: 'VoucherNumber', title: 'VoucherNumber' },
     { key: 'RecordType', title: 'RecordType' },
-    { key: 'PaymentRef', title: 'PaymentRef' },
-    { key: 'ChequeType', title: 'ChequeType' },
-    { key: 'ChequeAmt', title: 'ChequeAmt' },
-    { key: 'ChequeNumber', title: 'ChequeNumber' },
     { key: 'OrderingRib', title: 'OrderingRib' },
     { key: 'OrderingName', title: 'OrderingName' },
+    { key: 'PaymentRef', title: 'PaymentRef' },
     { key: 'OrderingAddr', title: 'OrderingAddr' },
     { key: 'BeneficiaryBank', title: 'BeneficiaryBank' },
     { key: 'BeneficiaryBranch', title: 'BeneficiaryBranch' },
     { key: 'BeneficiaryRib', title: 'BeneficiaryRib' },
-    { key: 'BeneficiaryName', title: 'BeneficiaryName' },
     { key: 'BeneficiaryAddr', title: 'BeneficiaryAddr' },
     { key: 'DateChqIssue', title: 'DateChqIssue' },
     { key: 'PaymentDetails', title: 'PaymentDetails' },
@@ -194,6 +213,7 @@ const header_model=[  { key: "Id", title: "Id" },
 const  list_encours=ref([])
 
 // Variables pour le dialogue
+const dialogData=ref([])
 const dialog = ref(false);
 const dialog_a_traiter = ref(false);
 const dialogTitle = ref('');
@@ -270,6 +290,20 @@ const get_list_a_traiter = async ( ) => {
   }
 };
 
+function check_type(data) {
+  const parts = data.ID.split('-');
+  const code = parts[6]; // index 6, si RecordType contient au moins 7 segments
+
+  if (code === '30' || code === '40') {
+    return 'Chèque rejeté';
+  } else if (code === '10') {
+    return 'Virement rejeté';
+  }
+
+  return 'Type inconnu';
+}
+
+
 // Classe de la ligne sélectionnée
 const onRowClick = (event,item) => {
   const rowElement = event.target.closest('tr');
@@ -286,14 +320,15 @@ const onRowClick = (event,item) => {
   if (rowElement) {
     rowElement.classList.add('red-row');
   }
-  openDialog('Notification?','Créez le GPP pour:  '+ item.item.Numero_pret)
+  openDialog('Creer le CDI?','Créez le GPP pour:  '+ item.item.Numero_pret,item.item)
 };
 
 // Fonction pour ouvrir le dialogue avec des paramètres personnalisés
-const openDialog = (title , content) => {
+const openDialog = (title , content,data) => {
   dialogTitle.value = title;
   dialogContent.value = content;
   dialog.value = true;
+  dialogData.value= transformDialogData(data)
 };
 const closeDialog = () => {
   dialog.value = false;
@@ -339,11 +374,7 @@ const send_selected_credit = async () => {
   }
 };
 const loadAllEncours = async () => {
-  const step = 10;
-  for (let offset = 0; offset < 100; offset += step) {
-    await get_list_cdi(offset, step);
-  }
-
+    await get_list_cdi(0, 100);
   await get_list_a_traiter();
 };
 
@@ -411,6 +442,58 @@ function downloadCSVFromProxyData(proxyData, headers) {
   document.body.removeChild(link);
 }
 
+function transformDialogData(sourceData) {
+  const mapping = {
+    ID: sourceData.ID,
+    "Code de l'établissement" : sourceData.ID.split("-")[2],
+    "Code de l'Agence" :sourceData.ID.split("-")[3],
+    OrderingRib: '000'+sourceData.OrderingRib,
+    "Identification de(s) tiers contrevenant(s)": "", // champ libre ou à mapper
+    "Identification du 1er, 2è, … contrevenants mandataires signataires": "", // champ libre
+    "Type du moyen de paiement :": "", // à mapper si connu (ex: ChequeType)
+    ChequeNumber: sourceData.ChequeNumber,
+    ChequeAmt: sourceData.ChequeAmt,
+    ClearanceDate: sourceData.ClearanceDate,
+    SettlementDate: sourceData.SettlementDate,
+    DatePresented: sourceData.DatePresented,
+    BeneficiaryName: sourceData.BeneficiaryName,
+    OrderingName: sourceData.OrderingName,
+    "Motif du refus": "", // pourrait être sourceData.RejectCode ou ErrorMessage ?
+    "Qolde du compte au moment de rejet": "", // probablement sourceData.ProcessStatus ou autre
+    "Sens du solde": "", // champ libre
+    "Référence de l’effet impayé": sourceData.FtId // ou OlbFtId selon contexte
+  };
+
+  // ordre final exact, y compris répétitions
+  const finalOrder = [
+    "OrderingRib",
+    "ID",
+    "Code de l'établissement",
+    "Code de l'Agence",
+    "OrderingRib",
+    "Identification de(s) tiers contrevenant(s)",
+    "Identification du 1er, 2è, … contrevenants mandataires signataires",
+    "Type du moyen de paiement :",
+    "ChequeNumber",
+    "ChequeAmt",
+    "ClearanceDate",
+    "SettlementDate",
+    "DatePresented",
+    "BeneficiaryName",
+    "OrderingName",
+    "Motif du refus",
+    "Qolde du compte au moment de rejet",
+    "Sens du solde",
+    "Référence de l’effet impayé"
+  ];
+
+  const transformed = {};
+  for (const key of finalOrder) {
+    transformed[key] = mapping[key] ?? "";
+  }
+
+  return transformed;
+}
 
 
 
