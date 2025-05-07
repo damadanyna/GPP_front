@@ -51,9 +51,11 @@
                   dense
                   variant="outlined"
                   class="green-border"
+                 @keyup="check_key_state()"
                 />
                 <!-- File input fields for PJ references and fillers -->
                 <v-file-input
+                @change="check_key_state()"
                   v-else-if="key === 'Référence de la pièce justificative (PJ)' || key === 'FILLER2' || key === 'FILLER3'"
                   :label="key"
                   v-model="dialogData[key]"
@@ -80,7 +82,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn @click="addIt" color="red" variant="flat" class="ml-2">Oui</v-btn>
+            <v-btn @click="addIt"   :disabled="!is_full" :color="is_full ? 'red' : 'gray'"  variant="flat" class="ml-2">Charger le formulaire?</v-btn>
             <v-btn @click="closeDialog" color="green" variant="flat" class="ml-2">Non</v-btn>
           </v-card-actions>
         </v-card>
@@ -124,7 +126,7 @@
 <script setup>
 import api from "@/api/axios";
 import { ref } from "vue";
-import { onMounted } from "vue";
+import { onMounted ,watch} from "vue";
 import { getData,getAllData } from '@/api/indexDB';
 import { usePopupStore } from '../../stores/store'
 
@@ -241,8 +243,7 @@ const header_model=[  { key: "Id", title: "Id" },
 ]
 
 const  list_encours=ref([])
-
-// Variables pour le dialogue*
+let is_full=ref(true)
 const selected=ref()
 const dialogData=ref([])
 const dialog = ref(false);
@@ -254,6 +255,12 @@ const selectedItems_a_traiter = ref([]); // <- Ici on récupère les items séle
 const selectedRow = ref(null);
 const list_a_traiter_ = ref(null);
 const data_temp=ref([])
+
+   // ✅ Réagit à toute modification de dialogData
+watch(dialogData, () => {
+      check_key_state();
+  }, { deep: true });
+
 
 const get_list_cdi = async (offset, limit) => {
   try {
@@ -338,16 +345,10 @@ function check_type() {
 // Classe de la ligne sélectionnée
 const onRowClick = (event,item) => {
   const rowElement = event.target.closest('tr');
-
-  // console.log(item.item);
   selectedRow.value=item.item
-
-  // Supprime la classe rouge de toutes les lignes (optionnel si tu veux une seule ligne en rouge)
   document.querySelectorAll('tr.red-row').forEach(row => {
     row.classList.remove('red-row');
   });
-
-  // Ajoute la classe à la ligne cliquée
   if (rowElement) {
     rowElement.classList.add('red-row');
   }
@@ -371,36 +372,6 @@ const addIt = async () => {
   usePopupStore().show_notification.status=true
   usePopupStore().show_notification.message='Effectué'
   usePopupStore().show_notification.ico='mdi mdi-check'
-
-  let elt_resultat = `${dialogData.value["Code de l'établissement"]};
-  ${dialogData.value["Code de l'Agence"]};
-  ${dialogData.value["OrderingRib"]};
-  115031005704-1;
-  ${dialogData.value["Identification du 1er, 2è, … contrevenants mandataires signataires"]};
-  ${dialogData.value["Type du moyen de paiement"]};
-  ${dialogData.value["Numéro du moyen de paiement"]};
-  ${dialogData.value["Montant du moyen de paiement"]};
-  ${dialogData.value["Date d’émission"]};
-  ${dialogData.value["Date de présentation"]};
-  ;
-  ${dialogData.value["Identification du bénéficiaire"]};
-  ${dialogData.value["Nom du bénéficiaire"]};
-  ${dialogData.value["Nom de la Banque présentateur "]};
-  ${dialogData.value["Motif du refus"]};
-  ${dialogData.value["Solde du compte au moment de rejet"]};
-  ${dialogData.value["Sens du solde"]};
-  ${dialogData.value["Référence de l’effet impayé"]};
-  ${dialogData.value["Référence de la lettre d’injonction (LI)"]};
-  ${dialogData.value["Date d’établissement de la lettre d’injonction"]};
-  ${dialogData.value["Référence envoi de la lettre d’injonction"]};
-  ${dialogData.value["Date d’envoi de la lettre d’injonction"]};
-  ${dialogData.value["Existence de la pièce justificative (PJ)"]};
-  ${dialogData.value["Date de la pièce justificative"]};
-  ${dialogData.value["Référence de la pièce justificative (PJ)"].name};
-  ${dialogData.value["FILLER2"].name};
-  ${dialogData.value["FILLER3"]}.name;
-  ${dialogData.value["FILLER4"]};
-  ${dialogData.value["FILLER5"]}.`;
 
   let object_elt=
   {"Code de l'établissement":dialogData.value["Code de l'établissement"],
@@ -439,10 +410,6 @@ const addIt = async () => {
     "FILLER3": dialogData.value["FILLER3"], // fichier
     "RéférencePJ": dialogData.value["Référence de la pièce justificative (PJ)"] // fichier
   };
-// console.log(dialogData.value["FILLER2"].name);
-console.log(object_elt,files);
-
-
 
   send_selected_credit(object_elt,files)
   // get_list_a_traiter()
@@ -511,6 +478,7 @@ const onRowClick_atraiter_=()=>{
   dialog_a_traiter.value = true;
 
 };
+
 const create_gpp_ = async () => {
   try {
     const response = await api.post("/api/update_is_create");
@@ -575,6 +543,35 @@ function getCurrentDateYYYYMMDD() {
   const month = String(today.getMonth() + 1).padStart(2, '0'); // Mois de 1 à 12
   const day = String(today.getDate()).padStart(2, '0');
   return `${year}${month}${day}`;
+}
+const checkEmptyFields = () => {
+  const keysToCheck = [
+    "Référence de la pièce justificative (PJ)",
+    "FILLER2",
+    "FILLER3",
+    "Référence de la lettre d’injonction (LI)",
+    "Référence envoi de la lettre d’injonction"
+  ];
+
+  const emptyFields = keysToCheck.filter((key) => {
+    const value = dialogData.value[key];
+    return (
+      !value ||
+      (typeof value === 'string' && value.trim() === '') ||
+      (value instanceof File && value.size === 0) ||
+      (Array.isArray(value) && value.length === 0)
+    );
+  });
+
+  if (emptyFields.length > 0) {
+    return false;
+  }
+  return true;
+};
+
+const check_key_state =()=>{
+
+  is_full.value= checkEmptyFields();
 }
 
 function transformDialogData(sourceData) {
@@ -648,18 +645,12 @@ const finalOrder = [
   "FILLER4",
   "FILLER5"
 ];
-
-
   const transformed = {};
   for (const key of finalOrder) {
     transformed[key] = mapping[key] ?? "";
   }
-
   return transformed;
 }
-
-
-
 </script>
 
 <style >
