@@ -510,3 +510,124 @@ class Encours:
         finally:
             if conn:
                 conn.close()
+
+    def insert_into_echange_cdi(self, data):   
+        
+        print("Code de l'établissement:" ,data["Référence de la pièce justificative (PJ)"])
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, "%Y%m%d").date()
+            except:
+                return None
+
+        try:
+            conn = self.db.connect()
+            cursor = conn.cursor()
+
+            # Création de la table si elle n'existe pas
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS cdi_encours (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                code_etablissement VARCHAR(20),
+                code_agence VARCHAR(20),
+                ordering_rib VARCHAR(34),
+                identification_tiers TEXT,
+                identification_contrevenants TEXT,
+                type_moyen_paiement VARCHAR(50),
+                numero_moyen_paiement VARCHAR(50),
+                montant_moyen_paiement DECIMAL(15, 2),
+                date_emission DATE,
+                date_presentation DATE,
+                date_echeance DATE,
+                identification_beneficiaire VARCHAR(100),
+                nom_beneficiaire VARCHAR(100),
+                nom_banque_presentateur VARCHAR(100),
+                motif_refus TEXT,
+                solde_compte_rejet DECIMAL(15, 2),
+                sens_solde VARCHAR(10),
+                reference_effet_impaye VARCHAR(50),
+                reference_lettre_injonction VARCHAR(50),
+                date_lettre_injonction DATE,
+                reference_envoi_lettre_injonction VARCHAR(50),
+                date_envoi_lettre_injonction DATE,
+                existence_pj BOOLEAN,
+                date_pj DATE,
+                reference_pj VARCHAR(100),
+                filler2 VARCHAR(100),
+                filler3 VARCHAR(100),
+                filler4 TEXT,
+                filler5 TEXT,
+                Creating_date DATETIME,
+                group_of VARCHAR(50),
+                Date_enreg DATETIME DEFAULT CURRENT_TIMESTAMP,
+                is_create VARCHAR(50)
+            );
+
+            """
+            cursor.execute(create_table_query)
+
+            
+            # Requête d'insertion
+            insert_query = """
+            INSERT INTO cdi_encours (
+               code_etablissement,code_agence,ordering_rib,identification_tiers,identification_contrevenants,
+              type_moyen_paiement,numero_moyen_paiement,montant_moyen_paiement,date_emission,date_presentation,
+              date_echeance,identification_beneficiaire,nom_beneficiaire,nom_banque_presentateur,motif_refus,solde_compte_rejet,
+              sens_solde,reference_effet_impaye,reference_lettre_injonction,date_lettre_injonction,reference_envoi_lettre_injonction,
+              date_envoi_lettre_injonction,existence_pj,date_pj,reference_pj,filler2,filler3,filler4,filler5,Creating_date,group_of,is_create
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            );
+
+            """
+            values = ( 
+                    data["Code de l'établissement"],                          # code_etablissement
+                    data["Code de l'Agence"],                                 # code_agence
+                    data["OrderingRib"],                                      # ordering_rib
+                    data["Identification de(s) tiers contrevenant(s)"],       # identification_tiers
+                    data["Identification du 1er, 2è, … contrevenants mandataires signataires"],  # identification_contrevenants
+                    data["Type du moyen de paiement"],                        # type_moyen_paiement
+                    data["Numéro du moyen de paiement"],                      # numero_moyen_paiement
+                   data["Montant du moyen de paiement"],           # montant_moyen_paiement
+                    parse_date(data["Date d’émission"]),                      # date_emission
+                    parse_date(data["Date de présentation"]),                 # date_presentation
+                    parse_date(data["Date d’échéance"]),                      # date_echeance
+                    data["Identification du bénéficiaire"],                   # identification_beneficiaire
+                    data["Nom du bénéficiaire"],                              # nom_beneficiaire
+                    data["Nom de la Banque présentateur "],                   # nom_banque_presentateur
+                    data["Motif du refus"],                                   # motif_refus
+                   data["Solde du compte au moment de rejet"],     # solde_compte_rejet
+                    data["Sens du solde"],                                    # sens_solde
+                    data["Référence de l’effet impayé"],                      # reference_effet_impaye
+                    data["Référence de la lettre d’injonction (LI)"],         # reference_lettre_injonction
+                    parse_date(data["Date d’établissement de la lettre d’injonction"]),  # date_lettre_injonction
+                    data["Référence envoi de la lettre d’injonction"],        # reference_envoi_lettre_injonction
+                    parse_date(data["Date d’envoi de la lettre d’injonction"]),  # date_envoi_lettre_injonction
+                    data["Existence de la pièce justificative (PJ)"],  # existence_pj
+                    parse_date(data["Date de la pièce justificative"]),       # date_pj
+                    data["Référence de la pièce justificative (PJ)"],         # reference_pj
+                    data["FILLER2"],                                          # filler2
+                    data["FILLER3"],                                          # filler3
+                    data["FILLER4"],                                          # filler4
+                    data["FILLER5"],                                          # filler5
+                    datetime.now(),                                           # Creating_date
+                    '',                    # group_of (clé à définir dans le dict si utile)
+                    False       
+            )
+
+            cursor.execute(insert_query, values)
+            conn.commit()
+
+            print("Ligne insérée avec succès.")
+            return {"status": "success", "inserted": 1}
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"error": str(e)}
+
+        finally:
+            if conn:
+                conn.close()

@@ -30,23 +30,52 @@
         <v-card style="padding: 10px 20px; max-height: 90vh; overflow-y: auto;">
           <v-col>
             <v-card-title style="font-size: 12px;">{{ dialogTitle }}</v-card-title>
-            <v-card-title style="font-size: 24; font-weight: bold;color: #FF5555;">{{ check_type(dialogData) }}</v-card-title>
+            <v-card-title style="font-size: 24; font-weight: bold;color: #FF5555;">{{ check_type() }}</v-card-title>
           </v-col>
           <v-card-text>
             <v-form>
               <v-container>
-                <v-row dense>
-                  <v-col cols="12" sm="6" md="3" v-for="(value, key) in dialogData" :key="key">
-                    <v-text-field
-                      :label="key"
-                      :model-value="value"
-                      readonly
-                      dense
-                      variant="outlined"
-                    />
-                  </v-col>
-                </v-row>
-              </v-container>
+            <v-row dense>
+              <v-col
+                v-for="(value, key) in dialogData"
+                :key="key"
+                :cols="key === 'Référence de la lettre d’injonction (LI)' || key === 'Référence envoi de la lettre d’injonction' ? 12 : 6"
+                sm="6"
+                md="3"
+              >
+                <!-- Editable fields for LI references -->
+                <v-text-field
+                  v-if="key === 'Référence de la lettre d’injonction (LI)' || key === 'Référence envoi de la lettre d’injonction'"
+                  :label="key"
+                  v-model="dialogData[key]"
+                  dense
+                  variant="outlined"
+                  class="green-border"
+                />
+                <!-- File input fields for PJ references and fillers -->
+                <v-file-input
+                  v-else-if="key === 'Référence de la pièce justificative (PJ)' || key === 'FILLER2' || key === 'FILLER3'"
+                  :label="key"
+                  v-model="dialogData[key]"
+                  dense
+                  variant="outlined"
+                  class="green-border"
+                  accept="application/pdf,image/*"
+                />
+                <!-- Readonly text fields for other keys -->
+                <v-text-field
+                  v-else
+                  :label="key"
+                  :model-value="value"
+                  readonly
+                  dense
+                  variant="outlined"
+                  style="opacity: .8;"
+                />
+              </v-col>
+            </v-row>
+          </v-container>
+
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -56,6 +85,7 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
+
 
 
 
@@ -212,7 +242,8 @@ const header_model=[  { key: "Id", title: "Id" },
 
 const  list_encours=ref([])
 
-// Variables pour le dialogue
+// Variables pour le dialogue*
+const selected=ref()
 const dialogData=ref([])
 const dialog = ref(false);
 const dialog_a_traiter = ref(false);
@@ -290,8 +321,8 @@ const get_list_a_traiter = async ( ) => {
   }
 };
 
-function check_type(data) {
-  const parts = data.ID.split('-');
+function check_type() {
+  const parts = selected.value.split('-');
   const code = parts[6]; // index 6, si RecordType contient au moins 7 segments
 
   if (code === '30' || code === '40') {
@@ -320,11 +351,12 @@ const onRowClick = (event,item) => {
   if (rowElement) {
     rowElement.classList.add('red-row');
   }
-  openDialog('Creer le CDI?','Créez le GPP pour:  '+ item.item.Numero_pret,item.item)
+  selected.value=item.item.ID
+  openDialog('Creer le CDI?','Créez le GPP pour: '+ item.item.Numero_pret,item.item)
 };
 
 // Fonction pour ouvrir le dialogue avec des paramètres personnalisés
-const openDialog = (title , content,data) => {
+const openDialog = (title,content,data) => {
   dialogTitle.value = title;
   dialogContent.value = content;
   dialog.value = true;
@@ -335,15 +367,103 @@ const closeDialog = () => {
   dialog_a_traiter.value = false;
 };
 const addIt = async () => {
-// console.log(selectedItems);
-
   closeDialog()
   usePopupStore().show_notification.status=true
   usePopupStore().show_notification.message='Effectué'
   usePopupStore().show_notification.ico='mdi mdi-check'
-  send_selected_credit()
-  get_list_a_traiter()
+
+  let elt_resultat = `${dialogData.value["Code de l'établissement"]};
+  ${dialogData.value["Code de l'Agence"]};
+  ${dialogData.value["OrderingRib"]};
+  115031005704-1;
+  ${dialogData.value["Identification du 1er, 2è, … contrevenants mandataires signataires"]};
+  ${dialogData.value["Type du moyen de paiement"]};
+  ${dialogData.value["Numéro du moyen de paiement"]};
+  ${dialogData.value["Montant du moyen de paiement"]};
+  ${dialogData.value["Date d’émission"]};
+  ${dialogData.value["Date de présentation"]};
+  ;
+  ${dialogData.value["Identification du bénéficiaire"]};
+  ${dialogData.value["Nom du bénéficiaire"]};
+  ${dialogData.value["Nom de la Banque présentateur "]};
+  ${dialogData.value["Motif du refus"]};
+  ${dialogData.value["Solde du compte au moment de rejet"]};
+  ${dialogData.value["Sens du solde"]};
+  ${dialogData.value["Référence de l’effet impayé"]};
+  ${dialogData.value["Référence de la lettre d’injonction (LI)"]};
+  ${dialogData.value["Date d’établissement de la lettre d’injonction"]};
+  ${dialogData.value["Référence envoi de la lettre d’injonction"]};
+  ${dialogData.value["Date d’envoi de la lettre d’injonction"]};
+  ${dialogData.value["Existence de la pièce justificative (PJ)"]};
+  ${dialogData.value["Date de la pièce justificative"]};
+  ${dialogData.value["Référence de la pièce justificative (PJ)"].name};
+  ${dialogData.value["FILLER2"].name};
+  ${dialogData.value["FILLER3"]}.name;
+  ${dialogData.value["FILLER4"]};
+  ${dialogData.value["FILLER5"]}.`;
+
+  let object_elt=
+  {"Code de l'établissement":dialogData.value["Code de l'établissement"],
+  "Code de l'Agence":dialogData.value["Code de l'Agence"],
+  "OrderingRib":dialogData.value["OrderingRib"],
+  "Identification de(s) tiers contrevenant(s)":dialogData.value["Identification de(s) tiers contrevenant(s)"],
+  "Identification du 1er, 2è, … contrevenants mandataires signataires":dialogData.value["Identification du 1er, 2è, … contrevenants mandataires signataires"],
+  "Type du moyen de paiement":dialogData.value["Type du moyen de paiement"],
+  "Numéro du moyen de paiement":dialogData.value["Numéro du moyen de paiement"],
+  "Montant du moyen de paiement":dialogData.value["Montant du moyen de paiement"],
+  "Date d’émission":dialogData.value["Date d’émission"],
+  "Date de présentation":dialogData.value["Date de présentation"],
+  "Date d’échéance":dialogData.value["Date d’échéance"],
+  "Identification du bénéficiaire":dialogData.value["Identification du bénéficiaire"],
+  "Nom du bénéficiaire":dialogData.value["Nom du bénéficiaire"],
+  "Nom de la Banque présentateur ":dialogData.value["Nom de la Banque présentateur "],
+  "Motif du refus":dialogData.value["Motif du refus"],
+  "Solde du compte au moment de rejet":dialogData.value["Solde du compte au moment de rejet"],
+  "Sens du solde":dialogData.value["Sens du solde"],
+  "Référence de l’effet impayé":dialogData.value["Référence de l’effet impayé"],
+  "Référence de la lettre d’injonction (LI)":dialogData.value["Référence de la lettre d’injonction (LI)"],
+  "Date d’établissement de la lettre d’injonction":dialogData.value["Date d’établissement de la lettre d’injonction"],
+  "Référence envoi de la lettre d’injonction":dialogData.value["Référence envoi de la lettre d’injonction"],
+  "Date d’envoi de la lettre d’injonction":dialogData.value["Date d’envoi de la lettre d’injonction"],
+  "Existence de la pièce justificative (PJ)":dialogData.value["Existence de la pièce justificative (PJ)"],
+  "Date de la pièce justificative":dialogData.value["Date de la pièce justificative"],
+  "Référence de la pièce justificative (PJ)":dialogData.value["Référence de la pièce justificative (PJ)"].name,
+  "FILLER2":dialogData.value["FILLER2"].name,
+  "FILLER3":dialogData.value["FILLER3"].name,
+  "FILLER4":dialogData.value["FILLER4"],
+  "FILLER5":dialogData.value["FILLER5"]}
+
+  // 2. Récupère les fichiers (de type File)
+  let files = {
+    "FILLER2": dialogData.value["FILLER2"], // fichier
+    "FILLER3": dialogData.value["FILLER3"], // fichier
+    "RéférencePJ": dialogData.value["Référence de la pièce justificative (PJ)"] // fichier
+  };
+// console.log(dialogData.value["FILLER2"].name);
+console.log(object_elt,files);
+
+
+
+  send_selected_credit(object_elt,files)
+  // get_list_a_traiter()
 };
+
+function add_date(dateStr, daysToAdd) {
+  if (!/^\d{8}$/.test(dateStr)) return ''; // vérifie le format YYYYMMDD
+
+  const year = parseInt(dateStr.substring(0, 4));
+  const month = parseInt(dateStr.substring(4, 6)) - 1; // Mois en JS : 0-11
+  const day = parseInt(dateStr.substring(6, 8));
+
+  const date = new Date(year, month, day);
+  date.setDate(date.getDate() + daysToAdd);
+
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0'); // reviens à 1-12
+  const yyyy = date.getFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
+}
 const Create_It = async () => {
 // console.log(selectedItems);
   create_gpp_()
@@ -358,16 +478,24 @@ const Create_It = async () => {
   console.log(list_a_traiter_.value);
 
 };
-const send_selected_credit = async () => {
+const send_selected_credit = async (data, files) => {
   try {
-    if (!selectedRow.value) {
-      console.warn("⚠️ Aucune ligne sélectionnée à envoyer.");
-      return;
-    }
+    const formData = new FormData();
 
-    const response = await api.post('/api/insert_credit_row', {
-      row_data: selectedRow.value
+    // Ajouter les données (en JSON string)
+    formData.append("row_data", JSON.stringify(data));
+
+    // Ajouter les fichiers (seulement s’ils existent)
+    if (files.FILLER2) formData.append("FILLER2", files.FILLER2);
+    if (files.FILLER3) formData.append("FILLER3", files.FILLER3);
+    if (files.RéférencePJ) formData.append("RéférencePJ", files.RéférencePJ);
+
+    const response = await api.post('/api/insert_cdi_row', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
+
     console.log("✅ Réponse de l'API :", response.data);
   } catch (error) {
     console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
@@ -416,7 +544,7 @@ function downloadCSVFromProxyData(proxyData, headers) {
 
   const csvHeaders = headers.map(h => h.title).join(";");
   const csvRows = dataArray.map(row =>
-    headers.map(h => `"${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
+    headers.map(h => `${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
   );
 
   const csvContent = [csvHeaders, ...csvRows].join("\n");
@@ -441,51 +569,86 @@ function downloadCSVFromProxyData(proxyData, headers) {
   link.click();
   document.body.removeChild(link);
 }
+function getCurrentDateYYYYMMDD() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0'); // Mois de 1 à 12
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
 
 function transformDialogData(sourceData) {
   const mapping = {
-    ID: sourceData.ID,
+    "BeneficiaryRib": "000"+sourceData.OrderingRib,
     "Code de l'établissement" : sourceData.ID.split("-")[2],
     "Code de l'Agence" :sourceData.ID.split("-")[3],
-    OrderingRib: '000'+sourceData.OrderingRib,
+    "OrderingRib": '000'+sourceData.OrderingRib,
     "Identification de(s) tiers contrevenant(s)": "", // champ libre ou à mapper
     "Identification du 1er, 2è, … contrevenants mandataires signataires": "", // champ libre
-    "Type du moyen de paiement :": "", // à mapper si connu (ex: ChequeType)
-    ChequeNumber: sourceData.ChequeNumber,
-    ChequeAmt: sourceData.ChequeAmt,
-    ClearanceDate: sourceData.ClearanceDate,
-    SettlementDate: sourceData.SettlementDate,
-    DatePresented: sourceData.DatePresented,
-    BeneficiaryName: sourceData.BeneficiaryName,
-    OrderingName: sourceData.OrderingName,
+    "Type du moyen de paiement": "CH", // à mapper si connu (ex: ChequeType)
+    "Numéro du moyen de paiement" : sourceData.ChequeNumber,
+    "Montant du moyen de paiement": sourceData.ChequeAmt,
+    "Date d’émission": add_date(sourceData.ProcessDate,0) ,
+    "Date de présentation": add_date(sourceData.DatePresented,0) ,
+    "Date d’échéance":add_date(sourceData.ProcessDate,0),
+    "Identification du bénéficiaire": '' ,
+    "Nom du bénéficiaire": sourceData.BeneficiaryName,
+    "Nom de la Banque présentateur ": sourceData.OrderingName,
     "Motif du refus": "", // pourrait être sourceData.RejectCode ou ErrorMessage ?
     "Qolde du compte au moment de rejet": "", // probablement sourceData.ProcessStatus ou autre
+    "Solde du compte au moment de rejet": "", // champ libre
     "Sens du solde": "", // champ libre
-    "Référence de l’effet impayé": sourceData.FtId // ou OlbFtId selon contexte
+    "Référence de l’effet impayé":"",
+    "Référence de la lettre d’injonction (LI)":"",
+    "Date d’établissement de la lettre d’injonction":add_date(getCurrentDateYYYYMMDD(),2),// ou OlbFtId selon contexte
+    "Référence envoi de la lettre d’injonction":"",
+    "Date d’envoi de la lettre d’injonction":add_date(getCurrentDateYYYYMMDD(),2),
+    "Existence de la pièce justificative (PJ)":"Non",
+    "Date de la pièce justificative":add_date(getCurrentDateYYYYMMDD(),2),// ou OlbFtId selon contexte
+    "Référence de la pièce justificative (PJ)":"",
+    "FILLER2":"",
+    "FILLER3":"",
+    "FILLER4":"",
+    "FILLER5":""
   };
 
   // ordre final exact, y compris répétitions
-  const finalOrder = [
-    "OrderingRib",
-    "ID",
-    "Code de l'établissement",
-    "Code de l'Agence",
-    "OrderingRib",
-    "Identification de(s) tiers contrevenant(s)",
-    "Identification du 1er, 2è, … contrevenants mandataires signataires",
-    "Type du moyen de paiement :",
-    "ChequeNumber",
-    "ChequeAmt",
-    "ClearanceDate",
-    "SettlementDate",
-    "DatePresented",
-    "BeneficiaryName",
-    "OrderingName",
-    "Motif du refus",
-    "Qolde du compte au moment de rejet",
-    "Sens du solde",
-    "Référence de l’effet impayé"
-  ];
+ // ordre final exact, y compris répétitions et nouveaux champs
+const finalOrder = [
+  "BeneficiaryRib",
+  "Code de l'établissement",
+  "Code de l'Agence",
+  "OrderingRib",
+  "Identification de(s) tiers contrevenant(s)",
+  "Identification du 1er, 2è, … contrevenants mandataires signataires",
+  "Type du moyen de paiement",
+  "Type du moyen de paiement",
+  "Numéro du moyen de paiement",
+  "Montant du moyen de paiement",
+  "Date d’émission",
+  "Date de présentation",
+  "Date d’échéance",
+  "Identification du bénéficiaire",
+  "Nom du bénéficiaire",
+  "Nom de la Banque présentateur ",
+  "Motif du refus",
+  "Qolde du compte au moment de rejet",
+  "Solde du compte au moment de rejet",
+  "Sens du solde",
+  "Référence de l’effet impayé",
+  "Référence de la lettre d’injonction (LI)",
+  "Référence envoi de la lettre d’injonction",
+  "Date d’établissement de la lettre d’injonction",
+  "Date d’envoi de la lettre d’injonction",
+  "Existence de la pièce justificative (PJ)",
+  "Date de la pièce justificative",
+  "Référence de la pièce justificative (PJ)",
+  "FILLER2",
+  "FILLER3",
+  "FILLER4",
+  "FILLER5"
+];
+
 
   const transformed = {};
   for (const key of finalOrder) {
@@ -515,6 +678,17 @@ tbody{
   background: green ;
   padding: 4px 10px;
   border-radius: 20px;
+}
+.green-border .v-input__control {
+  border: none;
+  border: 2px solid rgb(255, 255, 255) ;
+  border-radius: 10px;
+}
+
+.green-border .v-input__control:focus-within {
+  border: none;
+  border-radius: 10px;
+
 }
 
   </style>

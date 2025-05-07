@@ -1,6 +1,13 @@
 from flask import Blueprint, request, jsonify
 from controller.encours import Encours
 from flask_cors import CORS  # Importer CORS
+from werkzeug.utils import secure_filename
+import os 
+import json
+
+
+
+UPLOAD_FOLDER = "./uploads_files" 
 
 # Créer un blueprint pour organiser l'API
 api_bp = Blueprint('api', __name__)
@@ -80,6 +87,44 @@ def insert_credit_row():
 
     except Exception as e:
         print(f"Erreur dans /insert_credit_row : {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+
+@api_bp.route('/insert_cdi_row', methods=['POST'])
+def insert_cdi_row():
+        
+    # Créer le dossier s'il n'existe pas
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER) 
+    try:
+        # 1. Récupérer les données (JSON string dans le champ row_data)
+        if 'row_data' not in request.form:
+            return jsonify({'error': 'Données manquantes'}), 400
+        
+        row_data = request.form['row_data']
+        row = json.loads(row_data)  # transformer en dict
+
+        # 2. Sauvegarder les fichiers et stocker les noms dans le row
+        for field in ['FILLER2', 'FILLER3', 'RéférencePJ']:
+            file = request.files.get(field)
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                save_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(save_path)
+                print (f"Enregistré le fichier {filename} dans {save_path}")
+                # Stocker juste le nom du fichier dans le champ correspondant
+                row[field] = filename
+            else:
+                print(f"Aucun fichier trouvé pour le champ {field}")
+                row[field] = None  # ou "" selon ton modèle SQL
+
+        # 3. Insérer dans la base via ta fonction
+        result = encours.insert_into_echange_cdi(row)
+        return jsonify(result), 200 if result.get("status") == "success" else 400 
+
+    except Exception as e:
+        print(f"Erreur dans /insert_cdi_row : {e}")
         return jsonify({'error': str(e)}), 500
 
  

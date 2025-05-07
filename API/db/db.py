@@ -5,7 +5,7 @@ class DB:
         self.host = 'localhost'
         self.user = 'root'
         self.password = ''
-        self.database = 'dfe'
+        self.database = 'sipem_app'
 
     def connect(self):
         return pymysql.connect(
