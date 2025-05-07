@@ -133,6 +133,24 @@ class Encours:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
+    def get_liste_cdi(self):
+        try: 
+            conn = self.db.connect()
+            cursor = conn.cursor()
+            # Offset should be dynamically included in the query
+            select_query = f'SELECT * FROM cdi_encours'
+            # select_query = f'SELECT * FROM etat_des_encours'
+            
+            # Execute the query
+            cursor.execute(select_query)
+            rows = cursor.fetchall()
+        
+            return rows
+
+        except Exception as global_e:
+            error_msg = f"Erreur {global_e}"
+            print("Erreur", global_e)
+            return {'error': error_msg} 
         
  
     def get_liste_faites(self):

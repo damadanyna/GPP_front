@@ -94,7 +94,7 @@
       <v-tabs-window-item value="two">
         <button class="customize_btn" @click="onRowClick_atraiter_">
           <v-icon icon="mdi mdi-download-circle" size="24" />
-          Crréer le GPP
+          Génerer le '.txt'
         </button>
         <v-card title="LISTE DES DOSSIERS A TRAITER" flat>
           <template v-slot:text>
@@ -110,7 +110,7 @@
       <v-card style=" padding: 10px 20px;">
         <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
         <v-card-text>
-          Creer le Fichier d'échange GPP Solidis ?
+          Générer le '.txt' de ces éléments?
         </v-card-text>
         <v-card-actions>
           <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
@@ -200,25 +200,40 @@ const headers_a_traiter= [
     key: 'Numero_pret',
     sortable: false,
   },
-  { key: "Id", title: "Id" },
-  { key: "Agence", title: "Agence" },
-  { key: "Agec", title: "Agec" },
-  { key: "Compte", title: "Compte" },
-  { key: "Nom", title: "Nom" },
-  { key: "Classt", title: "Classt" },
-  { key: "Codape", title: "Codape" },
-  { key: "Mntcaht", title: "Mntcaht" },
-  { key: "Cli_n_a", title: "Cli_n_a" },
-  { key: "Nature", title: "Nature" },
-  { key: "Typecredit", title: "Typecredit" },
-  { key: "Montant", title: "Montant" },
-  { key: "Datech", title: "Datech" },
-  { key: "Rang", title: "Rang" },
-  { key: "Taux", title: "Taux" },
-  { key: "Datouv", title: "Datouv" },
-  { key: "Genre", title: "Genre" },
-  { key: "Group_of", title: "Group_of" },
-  { key: "Date_enreg", title: "Date_enreg" }
+  { key: "id", title: "Id" },
+  { key: "code_etablissement", title: "Code de l'établissement" },
+  { key: "code_agence", title: "Code de l'Agence" },
+  { key: "ordering_rib", title: "Ordering Rib" },
+  { key: "identification_tiers", title: "Identification de(s) tiers" },
+  { key: "identification_contrevenants", title: "Identification du(s) contrevenant(s)" },
+  { key: "type_moyen_paiement", title: "Type du moyen de paiement" },
+  { key: "numero_moyen_paiement", title: "Numéro du moyen de paiement" },
+  { key: "montant_moyen_paiement", title: "Montant du moyen de paiement" },
+  { key: "date_emission", title: "Date d'émission" },
+  { key: "date_presentation", title: "Date de présentation" },
+  { key: "date_echeance", title: "Date d'échéance" },
+  { key: "identification_beneficiaire", title: "Identification du bénéficiaire" },
+  { key: "nom_beneficiaire", title: "Nom du bénéficiaire" },
+  { key: "nom_banque_presentateur", title: "Nom de la Banque présentateur" },
+  { key: "motif_refus", title: "Motif du refus" },
+  { key: "solde_compte_rejet", title: "Solde du compte au moment de rejet" },
+  { key: "sens_solde", title: "Sens du solde" },
+  { key: "reference_effet_impaye", title: "Référence de l'effet impayé" },
+  { key: "reference_lettre_injonction", title: "Référence de la lettre d'injonction" },
+  { key: "date_lettre_injonction", title: "Date d'établissement de la lettre d'injonction" },
+  { key: "reference_envoi_lettre_injonction", title: "Référence envoi de la lettre d'injonction" },
+  { key: "date_envoi_lettre_injonction", title: "Date d'envoi de la lettre d'injonction" },
+  { key: "existence_pj", title: "Existence de la pièce justificative (PJ)" },
+  { key: "date_pj", title: "Date de la pièce justificative" },
+  { key: "reference_pj", title: "Référence de la pièce justificative (PJ)" },
+  { key: "filler2", title: "Filler 2" },
+  { key: "filler3", title: "Filler 3" },
+  { key: "filler4", title: "Filler 4" },
+  { key: "filler5", title: "Filler 5" },
+  { key: "Creating_date", title: "Date de création" },
+  { key: "group_of", title: "Group of" },
+  { key: "Date_enreg", title: "Date d'enregistrement" },
+  { key: "is_create", title: "Is create" }
 
 ]
 
@@ -291,7 +306,7 @@ const get_list_a_traiter = async ( ) => {
 
     }
     // Sinon on fait l'appel à l’API
-    const response = await api.get(`/api/get_liste_a_traiter`);
+    const response = await api.get(`/api/get_liste_cdi`);
 
     list_a_traiter_.value = response.data.list_of_data;
     list_a_traiter_.value = list_a_traiter_.value.map(item => {

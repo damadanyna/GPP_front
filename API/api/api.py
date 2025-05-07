@@ -222,6 +222,57 @@ def get_liste_a_traiter():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@api_bp.route('/get_liste_cdi', methods=['GET'])
+def get_liste_cdi():
+    """
+    Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
+    avec support d'un paramètre d'offset.
+    """ 
+    try:  # récupère l'offset de l'URL
+        data = encours.get_liste_cdi()
+        # Liste des clés
+        cles =[
+        "id",
+        "code_etablissement",
+        "code_agence",
+        "ordering_rib",
+        "identification_tiers",
+        "identification_contrevenants",
+        "type_moyen_paiement",
+        "numero_moyen_paiement",
+        "montant_moyen_paiement",
+        "date_emission",
+        "date_presentation",
+        "date_echeance",
+        "identification_beneficiaire",
+        "nom_beneficiaire",
+        "nom_banque_presentateur",
+        "motif_refus",
+        "solde_compte_rejet",
+        "sens_solde",
+        "reference_effet_impaye",
+        "reference_lettre_injonction",
+        "date_lettre_injonction",
+        "reference_envoi_lettre_injonction",
+        "date_envoi_lettre_injonction",
+        "existence_pj",
+        "date_pj",
+        "reference_pj",
+        "filler2",
+        "filler3",
+        "filler4",
+        "filler5",
+        "Creating_date",
+        "group_of",
+        "Date_enreg",
+        "is_create"
+        ]
+
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 @api_bp.route('/get_liste_faites', methods=['GET'])
 def get_liste_faites():
