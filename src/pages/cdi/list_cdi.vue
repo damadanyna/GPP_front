@@ -237,24 +237,36 @@ const headers_a_traiter= [
 
 ]
 
-const header_model=[  { key: "Id", title: "Id" },
-  { key: "Agence", title: "Agence" },
-  { key: "Agec", title: "Agec" },
-  { key: "Compte", title: "Compte" },
-  { key: "Nom", title: "Nom" },
-  { key: "Classt", title: "Classt" },
-  { key: "Codape", title: "Codape" },
-  { key: "Mntcaht", title: "Mntcaht" },
-  { key: "Cli_n_a", title: "Cli_n_a" },
-  { key: "Nature", title: "Nature" },
-  { key: "Typecredit", title: "Typecredit" },
-  { key: "Montant", title: "Montant" },
-  { key: "Datech", title: "Datech" },
-  { key: "Rang", title: "Rang" },
-  { key: "Taux", title: "Taux" },
-  { key: "Datouv", title: "Datouv" },
-  { key: "Genre", title: "Genre" },
-  { key: "Date_enreg", title: "Date_enreg" }
+const header_model=[
+  { key: "code_etablissement", title: "Code de l'établissement" },
+  { key: "code_agence", title: "Code de l'Agence" },
+  { key: "ordering_rib", title: "Ordering Rib" },
+  { key: "identification_tiers", title: "Identification de(s) tiers" },
+  { key: "identification_contrevenants", title: "Identification du(s) contrevenant(s)" },
+  { key: "type_moyen_paiement", title: "Type du moyen de paiement" },
+  { key: "numero_moyen_paiement", title: "Numéro du moyen de paiement" },
+  { key: "montant_moyen_paiement", title: "Montant du moyen de paiement" },
+  { key: "date_emission", title: "Date d'émission" },
+  { key: "date_presentation", title: "Date de présentation" },
+  { key: "date_echeance", title: "Date d'échéance" },
+  { key: "identification_beneficiaire", title: "Identification du bénéficiaire" },
+  { key: "nom_beneficiaire", title: "Nom du bénéficiaire" },
+  { key: "nom_banque_presentateur", title: "Nom de la Banque présentateur" },
+  { key: "motif_refus", title: "Motif du refus" },
+  { key: "solde_compte_rejet", title: "Solde du compte au moment de rejet" },
+  { key: "sens_solde", title: "Sens du solde" },
+  { key: "reference_effet_impaye", title: "Référence de l'effet impayé" },
+  { key: "reference_lettre_injonction", title: "Référence de la lettre d'injonction" },
+  { key: "date_lettre_injonction", title: "Date d'établissement de la lettre d'injonction" },
+  { key: "reference_envoi_lettre_injonction", title: "Référence envoi de la lettre d'injonction" },
+  { key: "date_envoi_lettre_injonction", title: "Date d'envoi de la lettre d'injonction" },
+  { key: "existence_pj", title: "Existence de la pièce justificative (PJ)" },
+  { key: "date_pj", title: "Date de la pièce justificative" },
+  { key: "reference_pj", title: "Référence de la pièce justificative (PJ)" },
+  { key: "filler2", title: "Filler 2" },
+  { key: "filler3", title: "Filler 3" },
+  { key: "filler4", title: "Filler 4" },
+  { key: "filler5", title: "Filler 5" }
 ]
 
 const  list_encours=ref([])
@@ -285,8 +297,8 @@ const get_list_cdi = async (offset, limit) => {
       const element = response.data.list_of_data[index];
       data_temp.value.push (element);
       list_encours.value.push (element);
-      console.log(list_encours.value);
-
+      console.log("list all: ",list_encours.value);
+      // list_encours.value=data_temp.value[0]
     }
 
   } catch (error) {
@@ -456,7 +468,7 @@ const Create_It = async () => {
     usePopupStore().show_notification.ico='mdi mdi-check'
   }, 400);
   get_list_a_traiter()
-  downloadCSVFromProxyData(list_a_traiter_.value,header_model)
+  downloadTXTFromProxyData(list_a_traiter_.value,header_model)
   console.log(list_a_traiter_.value);
 
 };
@@ -484,7 +496,10 @@ const send_selected_credit = async (data, files) => {
   }
 };
 const loadAllEncours = async () => {
+    const step = 100;
+  for (let offset = 0; offset < 10; offset += step) {
     await get_list_cdi(0, 100);
+  }
   await get_list_a_traiter();
 };
 
@@ -516,18 +531,19 @@ const create_gpp_ = async () => {
 };
 
 
-onMounted(async ()=>{
+onMounted( ()=>{
   loadAllEncours();
   // get_list_a_traiter()
-  const allData = await getAllData();
-  list_encours.value = allData;
+  // const allData = await getAllData();
+  // list_encours.value = allData;
 })
 function downloadCSVFromProxyData(proxyData, headers) {
   const dataArray = Array.from(proxyData);
 
   const csvHeaders = headers.map(h => h.title).join(";");
   const csvRows = dataArray.map(row =>
-    headers.map(h => `${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
+    headers.map(h => `"${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
+
   );
 
   const csvContent = [csvHeaders, ...csvRows].join("\n");
@@ -552,6 +568,39 @@ function downloadCSVFromProxyData(proxyData, headers) {
   link.click();
   document.body.removeChild(link);
 }
+
+function downloadTXTFromProxyData(proxyData, headers) {
+  const dataArray = Array.from(proxyData);
+
+  const txtHeaders = headers.map(h => h.title).join(";");
+  const txtRows = dataArray.map(row =>
+    headers.map(h => (row[h.key] ?? "").toString().replace(/"/g, "")).join(";")
+  );
+
+  const txtContent = [txtHeaders, ...txtRows].join("\n");
+  const blob = new Blob([txtContent], { type: "text/plain;charset=utf-8;" });
+  const link = document.createElement("a");
+
+  // 👉 Générer la date et l'heure au format voulu
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  const formattedDate = `${day}${month}${year}${hours}${minutes}${seconds}`;
+
+  // 👉 Télécharger le fichier .txt
+  link.href = URL.createObjectURL(blob);
+  link.setAttribute("download", `RGPP_${formattedDate}.txt`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+
 function getCurrentDateYYYYMMDD() {
   const today = new Date();
   const year = today.getFullYear();

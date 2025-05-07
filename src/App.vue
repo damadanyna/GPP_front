@@ -84,6 +84,13 @@ const listItems = ref([{
         type: 'cdi'
     },
     {
+        icon: ' mdi-invoice-send-outline',
+        title: 'Déclarations',
+        value: 'Déclarations',
+        to: '/' + Cookies.get('app') + '/cdi_declarement',
+        type: 'cdi'
+    },
+    {
         icon: 'mdi-file-chart-outline',
         title: 'Fichier',
         value: 'Fichier',
