@@ -593,7 +593,7 @@ function downloadTXTFromProxyData(proxyData, headers) {
 
   // 👉 Télécharger le fichier .txt
   link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", `RGPP_${formattedDate}.txt`);
+  link.setAttribute("download", `CDI_${formattedDate}.txt`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
