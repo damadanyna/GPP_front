@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,send_file
 from controller.encours import Encours
 from flask_cors import CORS  # Importer CORS
 from werkzeug.utils import secure_filename
 import os 
-import json
-
+import json 
+import zipfile
+import uuid
 
 
 # Créer un blueprint pour organiser l'API
@@ -404,3 +405,64 @@ def update_is_create():
         return jsonify(result), 200 if result.get("status") == "success" else 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500 
+
+
+  
+@api_bp.route('/upload-and-compress', methods=['POST'])
+def upload_and_compress_txt():
+    UPLOAD_FOLDER = './uploads_files/ziped_files'
+    DECLARATION_FOLDER = './uploads_files/declarations_files'
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'Aucun fichier reçu'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Nom de fichier vide'}), 400
+
+    if not file.filename.endswith('.txt'):
+        return jsonify({'error': 'Le fichier doit être au format .txt'}), 400
+
+    # Récupérer les noms de fichiers depuis le formulaire
+    pj_anr = request.form.get('pj_anr')
+    pj_ar = request.form.get('pj_ar')
+    pj_cnp = request.form.get('pj_cnp')
+
+    # Construire les chemins complets
+    files_to_add = []
+    for fname in [pj_anr, pj_ar, pj_cnp]:
+        if fname:
+            path = os.path.join(DECLARATION_FOLDER, fname)
+            if os.path.exists(path):
+                files_to_add.append(path)
+            else:
+                print(f"Fichier non trouvé : {path}")
+
+    try:
+        unique_id = str(uuid.uuid4())
+        txt_filename = f"{unique_id}.txt"
+        txt_path = os.path.join(UPLOAD_FOLDER, txt_filename)
+        file.save(txt_path)
+
+        zip_filename = f"{unique_id}.zip"
+        zip_path = os.path.join(UPLOAD_FOLDER, zip_filename)
+
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(txt_path, arcname=file.filename)  # Fichier .txt
+            for other_file in files_to_add:
+                zipf.write(other_file, arcname=os.path.basename(other_file))  # Ajouter avec nom original
+
+        return send_file(zip_path, as_attachment=True, download_name=zip_filename, mimetype='application/zip')
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        try:
+            if os.path.exists(txt_path):
+                os.remove(txt_path)
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+        except Exception as cleanup_err:
+            print(f"Erreur de nettoyage : {cleanup_err}")

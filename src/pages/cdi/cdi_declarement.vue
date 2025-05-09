@@ -418,8 +418,7 @@ onMounted(async ()=>{
   const allData = await getAllData();
   list_encours.value = allData;
 })
-
-function downloadTXTFromProxyData(proxyData, headers) {
+async function downloadTXTFromProxyData(proxyData, headers) {
   if (!proxyData || !headers || headers.length === 0) {
     console.warn("Aucune donnée à exporter.");
     return;
@@ -432,22 +431,51 @@ function downloadTXTFromProxyData(proxyData, headers) {
     headers.map(h => (row[h.key] ?? "")).join(";")
   );
 
-  const txtContent = txtRows.join("\n");  // ❌ PAS de txtHeaders ici
+  const txtContent = txtRows.join("\n");
   const blob = new Blob([txtContent], { type: "text/plain;charset=utf-8;" });
-  const link = document.createElement("a");
 
+  // Générer un nom de fichier avec la date formatée
   const now = new Date();
   const formattedDate = now.toLocaleString("fr-FR", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
-  }).replace(/\D/g, '');
+  }).replace(/\D/g, ''); // Remplacer tout caractère non numérique
+  const filename = `00132530-CNP-CH-00015-00001-2024-${formattedDate}.txt`;
 
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", `RGPP_${formattedDate}.txt`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const formData = new FormData();
+  formData.append("file", blob, filename);
+
+  // Ajouter les autres objets à formData
+  formData.append("pj_anr", dataArray[0].pj_anr);  // Ajouter le champ pj_anr
+  formData.append("pj_ar", dataArray[0].pj_ar);    // Ajouter le champ pj_ar
+  formData.append("pj_cnp", dataArray[0].pj_cnp);
+
+  try {
+    // Envoi du fichier au serveur pour compression
+    const response = await api.post('/api/upload-and-compress', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      responseType: 'blob',  // Important : Spécifie que la réponse attendue est un blob
+    });
+
+    // Si la réponse est un fichier, on le télécharge
+    const zipBlob = response.data;
+
+    // Créer un lien pour télécharger le fichier compressé
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `RGPP_${formattedDate}.zip`;
+    a.click();
+
+    // Libérer l'URL après téléchargement
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Erreur upload + compression :", err);
+  }
 }
+
 
 
 
