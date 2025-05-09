@@ -63,6 +63,8 @@
                   variant="outlined"
                   class="green-border"
                   accept="application/pdf,image/*"
+
+                  prepend-inner-icon="mdi-paperclip"
                 />
                 <!-- Readonly text fields for other keys -->
                 <v-text-field
@@ -297,7 +299,6 @@ const get_list_cdi = async (offset, limit) => {
       const element = response.data.list_of_data[index];
       data_temp.value.push (element);
       list_encours.value.push (element);
-      console.log("list all: ",list_encours.value);
       // list_encours.value=data_temp.value[0]
     }
 
@@ -348,7 +349,6 @@ const get_list_a_traiter = async ( ) => {
     usePopupStore().list_a_traiter=list_a_traiter_.value
 
 
-    console.log('📡 Données récupérées depuis API et stockées localement',list_a_traiter_.value);
 
   } catch (error) {
     console.error("❌ Erreur lors de la récupération des fichiers:", error);
@@ -469,7 +469,6 @@ const Create_It = async () => {
   }, 400);
   get_list_a_traiter()
   downloadTXTFromProxyData(list_a_traiter_.value,header_model)
-  console.log(list_a_traiter_.value);
 
 };
 const send_selected_credit = async (data, files) => {
@@ -717,7 +716,7 @@ const finalOrder = [
 }
 </script>
 
-<style >
+<style scoped >
 tbody{
   color: gray;
 }

@@ -7,8 +7,6 @@ import json
 
 
 
-UPLOAD_FOLDER = "./uploads_files" 
-
 # Créer un blueprint pour organiser l'API
 api_bp = Blueprint('api', __name__)
 
@@ -94,6 +92,8 @@ def insert_credit_row():
 @api_bp.route('/insert_cdi_row', methods=['POST'])
 def insert_cdi_row():
         
+    UPLOAD_FOLDER = "./uploads_files" 
+
     # Créer le dossier s'il n'existe pas
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER) 
@@ -128,6 +128,43 @@ def insert_cdi_row():
         return jsonify({'error': str(e)}), 500
 
  
+@api_bp.route('/insert_declaration', methods=['POST'])
+def insert_declaration():
+        
+    UPLOAD_FOLDER = "./uploads_files/declarations_files" 
+    # Créer le dossier s'il n'existe pas
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER) 
+    try:
+        # 1. Récupérer les données (JSON string dans le champ row_data)
+        if 'row_data' not in request.form:
+            return jsonify({'error': 'Données manquantes'}), 400
+        
+        row_data = request.form['row_data']
+        row = json.loads(row_data)  # transformer en dict
+
+        # 2. Sauvegarder les fichiers et stocker les noms dans le row
+        for field in ['pj_ar', 'pj_cnp', 'pj_anr']:
+            file = request.files.get(field)
+            if file and file.filename:
+                filename = secure_filename(file.filename)
+                save_path = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(save_path)
+                print (f"Enregistré le fichier {filename} dans {save_path}")
+                # Stocker juste le nom du fichier dans le champ correspondant
+                row[field] = filename
+            else:
+                print(f"Aucun fichier trouvé pour le champ {field}")
+                row[field] = None  # ou "" selon ton modèle SQL
+ 
+        # 3. Insérer dans la base via ta fonction
+        result = encours.insert_into_declaration(row)
+        return jsonify(result), 200 if result.get("status") == "success" else 400  
+    except Exception as e:
+        print(f"Erreur dans /insert_declaration : {e}")
+        return jsonify({'error': str(e)}), 500
+
+ 
 @api_bp.route('/get_encours', methods=['GET'])
 def get_all_dfe_database():
     """
@@ -153,6 +190,40 @@ def get_all_dfe_database():
         return jsonify({'list_of_data': liste_dictionnaires}) 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+ 
+@api_bp.route('/get_liste_declarement', methods=['GET'])
+def get_liste_declarement():
+    """
+    Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
+    avec support d'un paramètre d'offset.
+    """
+    offset = int(request.args.get('offset', 0))
+    limit = int(request.args.get('limit', 100))  
+    print (f"offset: {offset}, limit: {limit}")
+    try:  # récupère l'offset de l'URL
+        data = encours.get_liste_declarement(offset=offset,limit=limit)
+        # Liste des clés
+        cles =[
+            'id',
+            'numero_dossier',
+            'date_creation',
+            'filler1',
+            'pj_ar',
+            'pj_cnp',
+            'pj_anr',
+            'filler2',
+            'filler3',
+            'filler4',
+            'Date_enreg',
+            'is_create'
+        ]
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        
+        return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+ 
 
 
 @api_bp.route('/get_list_cdi', methods=['GET'])

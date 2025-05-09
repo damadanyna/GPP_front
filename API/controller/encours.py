@@ -133,6 +133,23 @@ class Encours:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
+    def  get_liste_declarement(self, offset,limit):    
+        try: 
+            conn = self.db.connect()
+            cursor = conn.cursor()
+            # Offset should be dynamically included in the query
+            select_query = f'SELECT * FROM pj_documents  LIMIT {limit} OFFSET {offset}'
+            # select_query = f'SELECT * FROM etat_des_encours'
+            
+            # Execute the query
+            cursor.execute(select_query)
+            rows = cursor.fetchall() 
+            return rows
+
+        except Exception as global_e:
+            error_msg = f"Erreur {global_e}"
+            print("Erreur", global_e)
+            return {'error': error_msg} 
     def get_liste_cdi(self):
         try: 
             conn = self.db.connect()
@@ -633,6 +650,80 @@ class Encours:
                     datetime.now(),                                           # Creating_date
                     '',                    # group_of (clé à définir dans le dict si utile)
                     False       
+            )
+
+            cursor.execute(insert_query, values)
+            conn.commit()
+
+            print("Ligne insérée avec succès.")
+            return {"status": "success", "inserted": 1}
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"error": str(e)}
+
+        finally:
+            if conn:
+                conn.close()
+
+
+    def insert_into_declaration(self, data):  
+        print(data)
+        def parse_date(date_str):
+            try:
+                return datetime.strptime(date_str, "%Y%m%d").date()
+            except:
+                return None 
+        try:
+            conn = self.db.connect()
+            cursor = conn.cursor() 
+            # Création de la table si elle n'existe pas
+            create_table_query = """
+                CREATE TABLE IF NOT EXISTS  pj_documents (
+                    ID INT AUTO_INCREMENT PRIMARY KEY,
+                    numero_dossier VARCHAR(50),        
+                    date_creation VARCHAR(50),                
+                    filler1 TEXT,                      
+                    pj_ar VARCHAR(255),                
+                    pj_cnp VARCHAR(255),               
+                    pj_anr VARCHAR(255),               
+                    filler2 TEXT,                      
+                    filler3 TEXT,                      
+                    filler4 TEXT,
+                    Date_enreg DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    is_create VARCHAR(50)                      
+                );  """
+            cursor.execute(create_table_query) 
+            # Requête d'insertion
+            insert_query = """
+            INSERT INTO pj_documents (
+                numero_dossier,
+                date_creation,
+                filler1,
+                pj_ar,
+                pj_cnp,
+                pj_anr,
+                filler2,
+                filler3,
+                filler4,
+                Date_enreg,
+                is_create
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            );   """
+            values = ( 
+                    data["numero_dossier"],
+                    data["date_creation"],
+                    data["filler1"],
+                    data["pj_ar"],
+                    data["pj_cnp"],
+                    data["pj_anr"],
+                    data["filler2"],
+                    data["filler3"],
+                    data["filler4"], 
+                    datetime.now(),                                           # Creating_date
+                    '',         
             )
 
             cursor.execute(insert_query, values)

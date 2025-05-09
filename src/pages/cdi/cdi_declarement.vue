@@ -3,6 +3,10 @@
 
   <v-card style=" position: sticky; top: 13vh; z-index: 10; background-color: transparent; overflow: hidden;">
     <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
+        <button class="customize_btn" @click="onRowClick_atraiter_" >
+          <v-icon icon="mdi mdi-plus" size="24" />
+          Crréer le CDI
+        </button>
         <v-card title="Liste des Déclaration" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
@@ -14,177 +18,223 @@
       <v-dialog v-model="dialog" width="auto">
         <v-card style=" padding: 10px 20px;">
           <v-card-title style=" font-size: 12px;">{{ dialogTitle }}</v-card-title>
-          <v-card-text>
-            {{ dialogContent }}
-          </v-card-text>
+          <v-col width="1000px">
+            {{ dialogContent.label }}
+            <v-row class=" mt-10">
+              <v-img
+              @click="viewimg=true"
+                v-for="item in dialogContent.image" :key="item"
+                :src="'../../../API/uploads_files/declarations_files/'+item.img"
+                class="align-end mx-2"
+                gradient="to bottom, rgba(0,0,0,.1), rgba(0,0,0,.5)"
+                height="100px"
+                width="170px"
+                cover
+              >
+                <span class="text-white text-sm pl-3">
+                  {{item.label}}
+                </span>
+              </v-img>
+
+            </v-row>
+            </v-col>
           <v-card-actions>
             <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
-              <button @click="addIt()" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
-              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
+              <v-btn @click="extract_item()" color="red" variant="flat" class="ml-2">
+                <v-icon start>mdi-folder-zip</v-icon>
+                Fichier Zip
+              </v-btn>
+              <v-btn @click="closeDialog"  color="green" variant="flat" class="ml-2">Fermer</v-btn>
+
             </div>
           </v-card-actions>
         </v-card>
       </v-dialog>
 
     <!-- Dialogue qui sera contrôlé par la fonction -->
-      <v-dialog v-model="dialog_a_traiter" width="auto">
+      <v-dialog v-model="dialog_a_traiter" width="850px">
         <v-card style=" padding: 10px 20px;">
           <v-card-title style=" font-size: 12px;">Formulaire des déclarations</v-card-title>
           <v-card-text>
-            Creer le Fichier d'échange GPP Solidis ?
+            <v-form>
+              <v-container>
+            <v-row dense>
+              <v-col
+                v-for="(value, key) in dialogData"
+                :key="key"
+                cols="12"
+                sm="6"
+                md="4"
+              >
+
+                <!-- File input fields for PJ references and fillers -->
+                <v-file-input
+                    v-if="key === 'PJ AR' || key === 'PJ CNP' || key === 'PJ ANR'"
+                    :label="key"
+                    v-model="dialogData[key]"
+                    variant="outlined"
+                    class="green-border no-prepend-icon"
+                    accept="application/pdf,image/*"
+                    prepend-inner-icon="mdi-paperclip"
+                  />
+                <v-text-field
+                  v-else-if="key === 'Date de création'"
+                  v-model="dialogData[key]"
+                  :label="key"
+                  type="date"
+                  dense
+                  :max="today"
+                  variant="outlined"
+                />
+              <v-text-field
+                  v-else
+                  :label="key"
+                  v-model="dialogData[key]"
+                  dense
+                  variant="outlined"
+                  style="opacity: .8;"
+                />
+
+                <v-text-field
+                  v-else
+                  :label="key"
+                  v-model="dialogData[key]"
+                  dense
+                  variant="outlined"
+                  style="opacity: .8;"
+                />
+              </v-col>
+            </v-row>
+          </v-container>
+
+            </v-form>
           </v-card-text>
           <v-card-actions>
             <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
-              <button @click="Create_It" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
-              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
-            </div>
+              <v-btn @click="Create_It"   :disabled="!is_full" :color="is_full ? 'red' : 'gray'"  variant="flat" class="ml-2">Enregistrer ?</v-btn>
+              <v-btn @click="closeDialog" color="green" variant="flat" class="ml-2">Non</v-btn>
+              </div>
           </v-card-actions>
         </v-card>
       </v-dialog>
 
 
-  </v-card>
+      <v-dialog v-model="viewimg" width="620px">
+        <v-card class="  " flat style=" width: 40vw; display: flex; justify-content: center; align-items: center;" >
+          <v-window v-model="window" show-arrows   style=" width: 100%; height: 100%;" >
+          <v-window-item   v-for="item,i in dialogContent.image" :key="item"  style=" width: 100%; height: 100%;">
+
+            <v-img
+                :src="'../../../API/uploads_files/declarations_files/'+item.img"
+                class="align-end"
+                gradient="to bottom, rgba(0,0,0,.1), rgba(0,0,0,.5)"
+                height="100vh"
+                width="40vw"
+                cover
+              >
+              </v-img>
+            </v-window-item>
+          </v-window>
+        </v-card>
+      </v-dialog>
+
+
+      </v-card>
+
 
 </template>
 
 <script setup>
 import api from "@/api/axios";
 import { ref } from "vue";
-import { onMounted } from "vue";
-import { getData,getAllData } from '@/api/indexDB';
+import { onMounted,watch } from "vue";
+import { getAllData } from '@/api/indexDB';
 import { usePopupStore } from '../../stores/store'
 
-
-
-// import Cookies from 'js-cookie';
-// import Etat_encours from "./etat_encours.vue";
-
-const tab = ref("one");
-
-// Déclaration des variables réactives
 const search = ref('');
-const search_a_traiter = ref('');
+
+let is_full=ref(false)
+const today = new Date().toISOString().split("T")[0];
+const dialogData = ref({
+  "Numéro de dossier": "",
+  "Date de création": "",
+  "Champ vide 1": "",
+  "PJ AR": "",
+  "PJ CNP": "",
+  "PJ ANR": "",
+  "Champ vide 2": "",
+  "Champ vide 3": "",
+  "Champ vide 4": ""
+});
 
 const headers= [
   {
     align: 'start',
     key: 'Numero_pret',
     sortable: false,
-    title: 'Code Dossier',
   },
-  { key: 'Agence', title: 'Agence' },
-{ key: 'identification_client', title: 'identification_client' },
-{ key: 'Numero_pret', title: 'Numero_pret' },
-{ key: 'linked_appl_id', title: 'linked_appl_id' },
-{ key: 'Date_pret', title: 'Date_pret' },
-{ key: 'Date_fin_pret', title: 'Date_fin_pret' },
-{ key: 'Nom_client', title: 'Nom_client' },
-{ key: 'Produits', title: 'Produits' },
-{ key: 'Amount', title: 'Amount' },
-{ key: 'Duree_Remboursement', title: 'Duree_Remboursement' },
-{ key: 'Chiff_affaire', title: "Chiffre d'affaire" },
-{ key: 'taux_d_interet', title: 'taux_d_interet' },
-{ key: 'Nombre_de_jour_retard', title: 'Nombre_de_jour_retard' },
-{ key: 'payment_date', title: 'payment_date' },
-{ key: 'Statut_du_client', title: 'Statut_du_client' },
-{ key: 'Capital_Non_appele_ech', title: 'Capital_Non_appele_ech' },
-{ key: 'Capital_Appele_Non_verse', title: 'Capital_Appele_Non_verse' },
-{ key: 'Total_capital_echus_non_echus', title: 'Total_capital_echus_non_echus' },
-{ key: 'Total_interet_echus', title: 'Total_interet_echus' },
-{ key: 'OD Pen', title: 'OD Pen' },
-{ key: 'OD & PEN', title: 'OD & PEN' },
-{ key: 'Genre', title: 'Genre' },
-{ key: 'Secteur_d_activité', title: 'Secteur_d_activité' },
-{ key: 'Secteur_d_activité_code', title: 'Secteur_d_activité_code' },
-{ key: 'Agent_de_gestion', title: 'Agent_de_gestion' },
-{ key: 'Code_Garantie', title: 'Code_Garantie' },
-{ key: 'Valeur_garantie', title: 'Valeur_garantie' },
-{ key: 'arr_status', title: 'arr_status' }
-]
-
-const headers_a_traiter= [
-  {
-    align: 'start',
-    key: 'Numero_pret',
-    sortable: false,
-  },
-  { key: "Id", title: "Id" },
-  { key: "Agence", title: "Agence" },
-  { key: "Agec", title: "Agec" },
-  { key: "Compte", title: "Compte" },
-  { key: "Nom", title: "Nom" },
-  { key: "Classt", title: "Classt" },
-  { key: "Codape", title: "Codape" },
-  { key: "Mntcaht", title: "Mntcaht" },
-  { key: "Cli_n_a", title: "Cli_n_a" },
-  { key: "Nature", title: "Nature" },
-  { key: "Typecredit", title: "Typecredit" },
-  { key: "Montant", title: "Montant" },
-  { key: "Datech", title: "Datech" },
-  { key: "Rang", title: "Rang" },
-  { key: "Taux", title: "Taux" },
-  { key: "Datouv", title: "Datouv" },
-  { key: "Genre", title: "Genre" },
-  { key: "Group_of", title: "Group_of" },
-  { key: "Date_enreg", title: "Date_enreg" }
+{ key: 'numero_dossier', title: 'numero_dossier' },
+{ key: 'date_creation', title: 'date_creation' },
+{ key: 'filler1', title: 'filler1' },
+{ key: 'pj_ar', title: 'pj_ar' },
+{ key: 'pj_cnp', title: 'pj_cnp' },
+{ key: 'pj_anr', title: 'pj_anr' },
+{ key: 'filler2', title: 'filler2' },
+{ key: 'filler3', title: 'filler3' },
+{ key: 'filler4', title: 'filler4' },
+{ key: 'Date_enreg', title: 'Date_enreg' },
 
 ]
 
-const header_model=[  { key: "Id", title: "Id" },
-  { key: "Agence", title: "Agence" },
-  { key: "Agec", title: "Agec" },
-  { key: "Compte", title: "Compte" },
-  { key: "Nom", title: "Nom" },
-  { key: "Classt", title: "Classt" },
-  { key: "Codape", title: "Codape" },
-  { key: "Mntcaht", title: "Mntcaht" },
-  { key: "Cli_n_a", title: "Cli_n_a" },
-  { key: "Nature", title: "Nature" },
-  { key: "Typecredit", title: "Typecredit" },
-  { key: "Montant", title: "Montant" },
-  { key: "Datech", title: "Datech" },
-  { key: "Rang", title: "Rang" },
-  { key: "Taux", title: "Taux" },
-  { key: "Datouv", title: "Datouv" },
-  { key: "Genre", title: "Genre" },
-  { key: "Date_enreg", title: "Date_enreg" }
+const header_model=[
+{ key: 'numero_dossier', title: 'numero dossier' },
+{ key: 'date_creation', title: 'date creation' },
+{ key: 'filler1', title: 'filler1' },
+{ key: 'pj_ar', title: 'pj ar' },
+{ key: 'pj_cnp', title: 'pj cnp' },
+{ key: 'pj_anr', title: 'pj anr' },
+{ key: 'filler2', title: 'filler2' },
+{ key: 'filler3', title: 'filler3' },
+{ key: 'filler4', title: 'filler4' },
+
 ]
+const data_model=ref({
+  numero_dossier: "",
+    date_creation:  "",
+    filler1: "",
+    filler2: "",
+    filler3: "",
+    filler4: "",
+    pj_ar: "",
+    pj_cnp:  "",
+    pj_anr:  ""
+})
 
 const  list_encours=ref([])
-
+const window= ref(0);
 // Variables pour le dialogue
 const dialog = ref(false);
 const dialog_a_traiter = ref(false);
 const dialogTitle = ref('');
-const dialogContent = ref('');
+const dialogContent = ref({
+  label:'',
+  image: []
+});
+const viewimg=ref(false)
 const selectedItems = ref([]); // <- Ici on récupère les items sélectionnés
-const selectedItems_a_traiter = ref([]); // <- Ici on récupère les items sélectionnés
 const selectedRow = ref(null);
-const list_a_traiter_ = ref(null);
 const data_temp=ref([])
+
+
+   // ✅ Réagit à toute modification de dialogData
+watch(dialogData, () => {
+    check_key_state();
+}, { deep: true });
+
 
 const get_encours = async (offset, limit) => {
   try {
-    // const cacheKey = `encours_${offset}_${limit}`;
-
-    // D'abord, on essaie de récupérer depuis IndexedDB
-    // const cachedData = await getData(cacheKey);
-
-    // console.log(cachedData);
-    // if (cachedData) {
-    //   console.log('✅ Données chargées depuis IndexedDB');
-    //   // list_encours.value = cachedData;
-    //   return;
-    // }
-
-    // Sinon on fait l'appel à l’API
-    const response = await api.get(`/api/get_encours?offset=${offset}&limit=${limit}`);
-    // data_fetch.value  response.data.list_of_data;
-
-    // Sauvegarde dans IndexedDB
-    // const allData = await getAllData();
-    // console.log(response.data.list_of_data.length);
-    // console.log(allData.length);
+    const response = await api.get(`/api/get_liste_declarement?offset=${offset}&limit=${limit}`);
 
     for (let index = 0; index < response.data.list_of_data.length; index++) {
       const element = response.data.list_of_data[index];
@@ -192,73 +242,50 @@ const get_encours = async (offset, limit) => {
       list_encours.value.push (element);
     }
 
-    // if ( data_temp.value.length > allData.length) {
-    //   await clearData();
-    //   await saveData(cacheKey,response.data.list_of_data.length);
-    //   // console.log('📡 Données récupérées depuis API et stockées localement');
-    //   list_encours.value = data_temp.value;
-
-    // }
-
   } catch (error) {
     console.error("❌ Erreur lors de la récupération des fichiers:", error);
   }
 };
-const get_list_a_traiter = async ( ) => {
-  try {
-    const cacheKey = `a_traiter`;
+const checkEmptyFields = () => {
+  const keysToCheck = [
+  "Numéro de dossier",
+  "Date de création",
+  "PJ AR",
+  "PJ CNP",
+  "PJ ANR"
+  ];
 
-    // D'abord, on essaie de récupérer depuis IndexedDB
-    const cachedData = await getData(cacheKey);
+  const emptyFields = keysToCheck.filter((key) => {
+    const value = dialogData.value[key];
+    return (
+      !value ||
+      (typeof value === 'string' && value.trim() === '') ||
+      (value instanceof File && value.size === 0) ||
+      (Array.isArray(value) && value.length === 0)
+    );
+  });
 
-    // console.log(cachedData);
-    if (cachedData) {
-      console.log('✅ Données chargées depuis IndexedDB');
-
-    }
-    // Sinon on fait l'appel à l’API
-    const response = await api.get(`/api/get_liste_a_traiter`);
-
-    list_a_traiter_.value = response.data.list_of_data;
-    list_a_traiter_.value = list_a_traiter_.value.map(item => {
-      // Créer une copie de l'objet pour ne pas modifier l'original
-        const newItem = { ...item };
-
-        // Formater Datech si elle existe
-        if (newItem.Datech) {
-          const date = new Date(newItem.Datech);
-          newItem.Datech = date.getDate().toString().padStart(2, '0') + '.' +
-                              (date.getMonth() + 1).toString().padStart(2, '0') + '.' +
-                              date.getFullYear();
-        }
-
-        // Formater Datouv si elle existe
-        if (newItem.Datouv) {
-          const date = new Date(newItem.Datouv);
-          newItem.Datouv = date.getDate().toString().padStart(2, '0') + '.' +
-                          (date.getMonth() + 1).toString().padStart(2, '0') + '.' +
-                          date.getFullYear();
-        }
-
-        return newItem;
-      });
-    // console.log(list_a_traiter_);
-
-    usePopupStore().list_a_traiter=list_a_traiter_.value
-
-
-    console.log('📡 Données récupérées depuis API et stockées localement',list_a_traiter_.value);
-
-  } catch (error) {
-    console.error("❌ Erreur lors de la récupération des fichiers:", error);
+  if (emptyFields.length > 0) {
+    return false;
   }
+  return true;
+};
+
+const extract_item = () => {
+  setTimeout(() => {
+    // 👉 Convertir l'objet en tableau si ce n'est pas déjà un tableau
+    const dataToExport = Array.isArray(data_model.value)
+      ? data_model.value
+      : [data_model.value];  // enveloppe l'objet dans un tableau
+
+    downloadTXTFromProxyData(dataToExport, header_model);
+  }, 200);
 };
 
 // Classe de la ligne sélectionnée
 const onRowClick = (event,item) => {
   const rowElement = event.target.closest('tr');
 
-  // console.log(item.item);
   selectedRow.value=item.item
 
   // Supprime la classe rouge de toutes les lignes (optionnel si tu veux une seule ligne en rouge)
@@ -270,125 +297,153 @@ const onRowClick = (event,item) => {
   if (rowElement) {
     rowElement.classList.add('red-row');
   }
-  openDialog('Notification?','Créez le GPP pour:  '+ item.item.Numero_pret)
+
+  openDialog('Propriété',item.item)
 };
 
 // Fonction pour ouvrir le dialogue avec des paramètres personnalisés
 const openDialog = (title , content) => {
+  dialogContent.value.image=[]
   dialogTitle.value = title;
-  dialogContent.value = content;
+
+  dialogContent.value.label = 'N° de Dossier: '+content.numero_dossier;
+  dialogContent.value.label = 'N° de Dossier: '+content.numero_dossier;
+  dialogContent.value.image.push({img:content.pj_anr,label:'PJ ANR'});
+  dialogContent.value.image.push({img:content.pj_ar,label:'PJ AR'});
+  dialogContent.value.image.push({img:content.pj_cnp,label:'PJ CNP'});
+
+  data_model.value={
+    numero_dossier: content.numero_dossier,
+    date_creation:  convertirDateFr(content.date_creation),
+    filler1: content.filler1,
+    filler2: content.filler2,
+    filler3: content.filler3,
+    filler4: content.filler4,
+    pj_ar: content.pj_ar,
+    pj_cnp:  content.pj_cnp,
+    pj_anr:  content.pj_anr
+  }
+
+  console.log(data_model.value) ;
+
   dialog.value = true;
+
+
 };
+function convertirDateFr(dateStr) {
+  if (!dateStr) return "";
+
+  const [annee, mois, jour] = dateStr.split("-");
+  return `${jour}/${mois}/${annee};`;
+}
 const closeDialog = () => {
   dialog.value = false;
   dialog_a_traiter.value = false;
 };
-const addIt = async () => {
-// console.log(selectedItems);
 
-  closeDialog()
-  usePopupStore().show_notification.status=true
-  usePopupStore().show_notification.message='Effectué'
-  usePopupStore().show_notification.ico='mdi mdi-check'
-  send_selected_credit()
-  get_list_a_traiter()
-};
 const Create_It = async () => {
-// console.log(selectedItems);
-  create_gpp_()
+  // create_gpp_()
   closeDialog()
   setTimeout(() => {
     usePopupStore().show_notification.status=true
-    usePopupStore().show_notification.message="Le GPP Crée"
+    usePopupStore().show_notification.message="Le donnée enregisté"
     usePopupStore().show_notification.ico='mdi mdi-check'
   }, 400);
-  get_list_a_traiter()
-  downloadCSVFromProxyData(list_a_traiter_.value,header_model)
-  console.log(list_a_traiter_.value);
+
+  let row_to_send={
+  "numero_dossier":dialogData.value["Numéro de dossier"],
+  "date_creation":dialogData.value["Date de création"],
+  "filler1":dialogData.value["Champ vide 1"],
+  "filler2":dialogData.value["Champ vide 2"],
+  "filler3":dialogData.value["Champ vide 3"],
+  "filler4":dialogData.value["Champ vide 4"]
+  }
+
+  // 2. Récupère les fichiers (de type File)
+let files = {
+    "PJ_AR": dialogData.value["PJ AR"], // fichier
+    "PJ_CNP": dialogData.value["PJ CNP"], // fichier
+    "PJ_ANR": dialogData.value["PJ ANR"] // fichier
+  };
+
+  send_selected_credit(row_to_send,files)
+
 
 };
-const send_selected_credit = async () => {
-  try {
-    if (!selectedRow.value) {
-      console.warn("⚠️ Aucune ligne sélectionnée à envoyer.");
-      return;
-    }
 
-    const response = await api.post('/api/insert_credit_row', {
-      row_data: selectedRow.value
+const check_key_state =()=>{
+
+  is_full.value= checkEmptyFields();
+}
+
+const send_selected_credit = async (data, files) => {
+
+  try {
+    let formData = new FormData();
+    // Ajouter les données (en JSON string)
+    formData.append("row_data", JSON.stringify(data));
+
+    // Ajouter les fichiers (seulement s’ils existent)
+    if (files.PJ_AR) formData.append("pj_ar", files.PJ_AR);
+    if (files.PJ_CNP) formData.append("pj_cnp", files.PJ_CNP);
+    if (files.PJ_ANR) formData.append("pj_anr", files.PJ_ANR);
+    await api.post('/api/insert_declaration', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     });
-    console.log("✅ Réponse de l'API :", response.data);
   } catch (error) {
     console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
   }
 };
 const loadAllEncours = async () => {
   const step = 100;
-  for (let offset = 0; offset < 10000; offset += step) {
+  for (let offset = 0; offset < 10; offset += step) {
     await get_encours(offset, step);
   }
 
-  await get_list_a_traiter();
+  // await get_list_a_traiter();
 };
+
 
 const onRowClick_atraiter_=()=>{
 
   dialog_a_traiter.value = true;
 
 };
-const create_gpp_ = async () => {
-  try {
-    const response = await api.post("/api/update_is_create");
-
-    const result = response.data;
-
-    if (result.status === "success") {
-      console.log("Mise à jour réussie :", result);
-      console.log(`✔ ${result.updated} ligne(s) mise(s) à jour.\nGroup: ${result.group_of}`);
-      // Optionnel : recharger la liste ici
-    } else {
-      console.error("Erreur lors de la mise à jour :", result.error);
-      console.log(`❌ Erreur : ${result.error}`);
-    }
-
-  } catch (error) {
-    console.error("Erreur API :", error);
-    console.log("❌ Une erreur est survenue lors de l'appel API.");
-  }
-};
 
 onMounted(async ()=>{
   loadAllEncours();
-  get_list_a_traiter()
+  // get_list_a_traiter()
   const allData = await getAllData();
   list_encours.value = allData;
 })
-function downloadCSVFromProxyData(proxyData, headers) {
-  const dataArray = Array.from(proxyData);
 
-  const csvHeaders = headers.map(h => h.title).join(";");
-  const csvRows = dataArray.map(row =>
-    headers.map(h => `"${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
+function downloadTXTFromProxyData(proxyData, headers) {
+  if (!proxyData || !headers || headers.length === 0) {
+    console.warn("Aucune donnée à exporter.");
+    return;
+  }
+
+  const dataArray = Array.isArray(proxyData) ? proxyData : [proxyData];
+
+  // Génération uniquement des lignes, sans les titres
+  const txtRows = dataArray.map(row =>
+    headers.map(h => (row[h.key] ?? "")).join(";")
   );
 
-  const csvContent = [csvHeaders, ...csvRows].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const txtContent = txtRows.join("\n");  // ❌ PAS de txtHeaders ici
+  const blob = new Blob([txtContent], { type: "text/plain;charset=utf-8;" });
   const link = document.createElement("a");
 
-  // 👉 Générer la date et l'heure au format voulu
   const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0'); // janvier = 0
-  const year = now.getFullYear();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const formattedDate = now.toLocaleString("fr-FR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  }).replace(/\D/g, '');
 
-  const formattedDate = `${day}${month}${year}${hours}${minutes}${seconds}`;
-
-  // 👉 Utiliser cette date comme nom de fichier
   link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", `RGPP_${formattedDate}.csv`);
+  link.setAttribute("download", `RGPP_${formattedDate}.txt`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -397,9 +452,10 @@ function downloadCSVFromProxyData(proxyData, headers) {
 
 
 
+
 </script>
 
-<style >
+<style scoped>
 tbody{
   color: gray;
 }
@@ -409,8 +465,8 @@ tbody{
 }
 .customize_btn {
   position: absolute;
-  top: 10px;
-  right: 20px;
+  top: 50px;
+  right: 25px;
   z-index: 10;
   background: green ;
   padding: 4px 10px;
