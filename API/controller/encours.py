@@ -65,19 +65,7 @@ class Encours:
                 })
         
         return files
-
-
-    # def read_xlsx_file(self, filename):
-    #     """
-    #     Lire le fichier xlsx et récupérer son contenu.
-    #     """
-    #     filepath = os.path.join(self.upload_folder, filename)
-    #     workbook = openpyxl.load_workbook(filepath)
-    #     sheet = workbook.active
-    #     data = []
-    #     for row in sheet.iter_rows(values_only=True):
-    #         data.append(row)
-    #     return data
+ 
     
     def get_all_dfe_database(self, offset,limit):
         try: 

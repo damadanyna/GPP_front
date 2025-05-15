@@ -10,12 +10,20 @@ export const usePopupStore = defineStore('popup', () => {
   const user_access=ref([{
     name:"rgpp-onisoa",
     password:"123456",
-    app:"gpp"
+    app:"gpp",
+    url:'/gpp/dec_credit'
   },
   {
     name:"a",
     password:"a",
-    app:"cdi"
+    app:"cdi",
+    url:'/cdi/list_cdi'
+  },
+  {
+    name:"d",
+    password:"d",
+    app:"reportico",
+    url:'/reportico/reception'
   },
 ])
 

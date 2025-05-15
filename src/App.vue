@@ -98,8 +98,15 @@ const listItems = ref([{
         type: 'cdi'
     },
     {
+        icon: 'mdi-file-chart-outline',
+        title: 'import fichier',
+        value: 'Fichier',
+        to: '/' + Cookies.get('app') + '/import_file',
+        type: 'reportico'
+    },
+    {
         icon: 'mdi-account-circle-outline',
-        title: 'Quitter',
+        title: 'Déconnecter',
         value: 'Utilisateur',
         to: '',
         type: 'all'

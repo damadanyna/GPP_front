@@ -61,12 +61,6 @@ const matricule = ref('')
 const password = ref('')
 
 const login = () => {
-  // usePopupStore().user_access.name
-  // Simuler un appel d'API
-  // console.log('Logging in with:', matricule.value, password.value)
-
-  // console.log( usePopupStore().user_access.name);
-  // console.log( usePopupStore().user_access.password);
 
   const users = usePopupStore().user_access
 
@@ -79,7 +73,7 @@ const login = () => {
         // Lecture du token
         const token = Cookies.get('auth_token')
         console.log('Token lu depuis le cookie :', token)
-        window.location.replace('/'+user.app+'/dec_credit')
+        window.location.replace(user.url)
         return // pour sortir de la fonction après connexion
       }
     }
