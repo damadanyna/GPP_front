@@ -2,7 +2,7 @@
 <v-app>
     <notification v-if="popupStore.showPopup" id="not_content"></notification>
     <v-navigation-drawer v-if="token && app" v-model="drawer" :rail="rail" permanent @click="rail = false" style=" z-index: 1">
-        <v-list-item prepend-avatar="./assets/logo.png" title="GPP App" nav>
+        <v-list-item prepend-avatar="./assets/logo.png" title="SIPEM App" nav>
             <template v-slot:append>
                 <v-btn icon="mdi-chevron-left" variant="text" @click.stop="rail = !rail"></v-btn>
             </template>

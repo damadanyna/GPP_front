@@ -58,7 +58,7 @@ class Encours:
             return []  # Ou éventuellement retourner une erreur personnalisée
 
         for filename in os.listdir(folder_path):
-            if filename.endswith('.xlsx'):
+            if filename.endswith('.xlsx') or filename.endswith('.XLSX'):
                 files.append({
                     "used": False,
                     "file_name": filename
