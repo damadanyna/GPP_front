@@ -6,7 +6,7 @@ import random
 import string
 from db.db  import DB
 import pandas as pd
- 
+import re 
 
 class Encours:
     def __init__(self):
@@ -85,6 +85,8 @@ class Encours:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
+        
+
     def get_all_cdi_database(self, offset,limit):
         try: 
             conn = self.db.connect()
@@ -226,17 +228,44 @@ class Encours:
             merged_data.append(merged_row)
 
         return unique_headers, merged_data
-     
+    
+    def nettoyer_nom_fichier(self,filename):
+        # Enlever l'extension
+        nom_sans_ext = os.path.splitext(filename)[0]
+        
+        # Remplacer les ponctuations par '_'
+        nom_remplace = re.sub(f"[{re.escape(string.punctuation)}]", "_", nom_sans_ext)
+        
+        # Enlever les chiffres
+        nom_sans_chiffres = re.sub(r"\d+", "", nom_remplace)
+        
+        # Tout en minuscules
+        nom_final = nom_sans_chiffres.lower()
+        
+        # Nettoyage double underscore éventuel
+        nom_final = re.sub(r"_+", "_", nom_final).strip("_")
+        
+        return nom_final
+    
     def load_file_in_database(self, filename: str,app_name: str):
         """
         Charge un fichier Excel depuis './load_file/{filename}' et insère les données dans la base.
         """
+        reportico_valid_file_name=[
+            "account_mcbc_live_full",
+            "eb_chq_in_rcp_dtl_mcbc_live_full",
+            "aa_bill_details_mcbc_live_full",
+            "eb_cont_bal_mcbc_live_full",
+            "alternate_account_mcbc_live_full", 
+            "chq_rcp_a_valider" 
+        ]
+        table_name= self.nettoyer_nom_fichier(filename)
         try:
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             folder_path = os.path.join(project_root, 'load_file', app_name)
             filepath = os.path.join(folder_path, filename)
             # Informations sur le fichier 
-            print(f"[INFO] Chemin complet du fichier : {filepath}")
+            # print(f"[INFO] Chemin complet du fichier : {filepath}")
             
             # Vérification du répertoire courant
             current_dir = os.getcwd() 
@@ -245,17 +274,17 @@ class Encours:
             load_dir = os.path.join(project_root, 'load_file')
             if os.path.exists(load_dir):
                 files_in_dir = os.listdir(load_dir)
-                print(f"[INFO] Fichiers disponibles dans le répertoire : {files_in_dir}")
-            else:
-                print(f"[ERREUR] Le répertoire {load_dir} n'existe pas")
+                # print(f"[INFO] Fichiers disponibles dans le répertoire : {files_in_dir}")
+            else: 
+                return {"status": "error","message":f"[ERREUR] Le répertoire {load_dir} n'existe pas"}
 
             # Vérification de l'existence du fichier
             if not os.path.exists(filepath):
                 error_msg = f"[ERREUR] Fichier {filename} introuvable au chemin {filepath}"
-                print(error_msg)
+                # print(error_msg)
                 return {'error': error_msg}
 
-            print(f"[INFO] Le fichier existe et sera lu depuis : {filepath}")
+            # print(f"[INFO] Le fichier existe et sera lu depuis : {filepath}")
             
             # Lecture du fichier avec gestion d'erreur détaillée
             try:
@@ -298,7 +327,9 @@ class Encours:
                     table_name = 'eb_chq_in'
                 elif app_name == 'gpp':
                     table_name = 'etat_des_encours'
-                
+                elif app_name == 'reportico':
+                    if not table_name in reportico_valid_file_name:
+                        return {"status": "error","message":f"[ERREUR] Nom de fichier invalide {table_name}"} 
                     # Vidage de la table
                 drop_data_in_table = f'DROP TABLE IF EXISTS `{table_name}`;'
                 cursor.execute(drop_data_in_table)
@@ -321,13 +352,11 @@ class Encours:
                         if i % 100 == 0 or i == 1:
                             print(f'[INFO] Insertion de la ligne {i}/{len(data)-1}')
                             print(f'[DEBUG] Longueur de l\'entête: {len(headers)}, Longueur de la ligne: {len(row)}')
-                            if len(headers) != len(row):
-                                print(f'[AVERTISSEMENT] La ligne {i} a un nombre différent de colonnes par rapport à l\'entête')
-                        
+                            if len(headers) != len(row): 
+                                return {"status": "error","message":f'[AVERTISSEMENT] La ligne {i} a un nombre différent de colonnes par rapport à l\'entête'}
                         cursor.execute(insert_query, row)
                     except Exception as insert_error:
                         error_msg = f"[ERREUR] Échec à l'insertion de la ligne {i} : {str(insert_error)}"
-                        print(error_msg)
                         print(f"[DEBUG] Contenu de la ligne problématique : {row}")
                         import traceback
                         print(f"[DEBUG] Traceback : {traceback.format_exc()}")
@@ -728,3 +757,5 @@ class Encours:
         finally:
             if conn:
                 conn.close()
+
+

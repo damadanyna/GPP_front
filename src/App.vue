@@ -23,9 +23,12 @@
 </template>
 
 <script setup>
+
+import api from '@/api/axios'
 import {
     ref,
-    onBeforeMount
+    onBeforeMount,
+    onMounted
 } from 'vue';
 import router from './router/index';
 import notification from './components/notification.vue';
@@ -36,6 +39,19 @@ import Cookies from 'js-cookie' // <--- Ajouté
 
 const token = Cookies.get('auth_token')
 const app = Cookies.get('app')
+
+
+const int_compense = async () => {
+  try {
+    // Sinon on fait l'appel à l’API
+    const response = await api.get(`/api/int_compense`);
+    console.log(response);
+  } catch (error) {
+    console.error("❌ Erreur lors de la récupération des fichiers:", error);
+  }
+};
+
+
 onBeforeMount(() => {
     const token = Cookies.get('auth_token')
     const app = Cookies.get('app')
@@ -45,9 +61,14 @@ onBeforeMount(() => {
     }
 })
 
-// onMounted(() => {
-//     // router.replace('/dec_credit');
-// });
+
+onMounted(() => {
+  if (Cookies.get('app') == 'reportico') {
+    // console.log("intialisation reportico");
+    // int_compense()
+  }
+
+});
 
 const drawer = ref(true);
 const rail = ref(true);
@@ -96,6 +117,13 @@ const listItems = ref([{
         value: 'Fichier',
         to: '/' + Cookies.get('app') + '/cdi_import_file',
         type: 'cdi'
+    },
+    {
+        icon: 'mdi-file-table-box-multiple',
+        title: 'Compensation',
+        value: 'Compensation',
+        to: '/' + Cookies.get('app') + '/compensation',
+        type: 'reportico'
     },
     {
         icon: 'mdi-file-chart-outline',

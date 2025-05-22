@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify,send_file
 from controller.encours import Encours
+from controller.compensation import Compensation
 from flask_cors import CORS  # Importer CORS
 from werkzeug.utils import secure_filename
 import os 
@@ -13,6 +14,7 @@ api_bp = Blueprint('api', __name__)
 
 # Initialiser l'objet Encours
 encours = Encours()
+compensation = Compensation()
 
 # Appliquer CORS sur ce blueprint pour autoriser les requêtes venant de 'http://127.0.0.1:3000'
 # CORS(api_bp, origins=["http://127.0.0.1:3000"])
@@ -189,6 +191,41 @@ def get_all_dfe_database():
         ]
         liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
         return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+ 
+@api_bp.route('/get_chq_in', methods=['GET'])
+def get_chq_in():
+    """
+    Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file',
+    avec support d'un paramètre d'offset.
+    """ 
+    offset = int(request.args.get('offset', 0))
+    limit = int(request.args.get('limit', 100))  
+    try:  # récupère l'offset de l'URL
+        data = compensation.get_chq_in(offset=offset,limit=limit)
+        # Liste des clés
+        cles = ['processdate','recordtype','chequenumber','orderingrib','beneficiaryrib','solde','code_anomalie','anomailie','ANO']
+        liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
+        return jsonify({'list_of_data': liste_dictionnaires}) 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@api_bp.route('/int_compense', methods=['GET'])
+def int_compense(): 
+    try:  # récupère l'offset de l'URL
+        result = compensation.initialize_sql_functions_and_tmp_table()
+        print(result)
+        return jsonify(result), 200 if result.get("status") == "success" else 400 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+ 
+@api_bp.route('/import_tables_to_sipem_app', methods=['GET'])
+def import_tables_to_sipem_app(): 
+    try:  # récupère l'offset de l'URL
+        result = compensation.import_tables_to_sipem_app( )
+        return jsonify(result), 200 if result.get("status") == "initialisation success" else 400 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
