@@ -214,16 +214,13 @@ class Compensation:
             # Offset should be dynamically included in the query
             select_query = f""" 
                 SELECT 
+                chq.ftid,
                 chq.processdate,
                     chq.recordtype,
                     chq.chequenumber,
                     chq.orderingrib,
                     chq.beneficiaryrib,  
-                    (SELECT get_sold_dav(type_sysdate, open_balance, credit_mvmt, debit_mvmt) FROM eb_cont_bal_mcbc_live_full WHERE type_sysdate IS NOT NULL
-                    AND id= (IFNULL(
-                        (SELECT id FROM tmp_rib_indexed WHERE tmp_rib_indexed.rib = orderingrib),
-                        (SELECT id FROM tmp_rib_indexed WHERE tmp_rib_indexed.rib2 = orderingrib)
-                )) ) as solde,
+                    `chq_rcp`.`Montant debite` as solde,
                     '' as code_anomalie,
                     `chq_rcp`.`Alerte` as anomailie,
                     CASE 

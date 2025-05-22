@@ -205,7 +205,7 @@ def get_chq_in():
     try:  # récupère l'offset de l'URL
         data = compensation.get_chq_in(offset=offset,limit=limit)
         # Liste des clés
-        cles = ['processdate','recordtype','chequenumber','orderingrib','beneficiaryrib','solde','code_anomalie','anomailie','ANO']
+        cles = ['ftid','processdate','recordtype','chequenumber','orderingrib','beneficiaryrib','solde','code_anomalie','anomailie','ANO']
         liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]
         return jsonify({'list_of_data': liste_dictionnaires}) 
     except Exception as e:

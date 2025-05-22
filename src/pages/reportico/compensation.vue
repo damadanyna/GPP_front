@@ -1,6 +1,8 @@
 <!-- src/pages/home.vue or src/components/home.vue -->
 <template>
   <v-card style=" position: sticky; top: 0; z-index: 10; background-color: transparent; overflow: hidden;">
+
+
     <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
     <v-tabs v-model="tab" >
       <v-tab value="one">Chèques Entrants</v-tab>
@@ -49,7 +51,7 @@
     </v-tabs-window>
 
     <button style="position:  absolute; top: 20px; right: 20px;font-size: 12px; background-color: #212121; color: white; padding: 5px 10px; border-radius: 25px;" @click="load_database()">Charger</button>
-
+<span style="position: absolute; top: 20vh; right: 40px;">{{ total }}</span>
     <!-- Dialogue qui sera contrôlé par la fonction -->
       <v-dialog v-model="dialog_a_traiter" width="auto">
         <v-card style=" padding: 10px 20px;">
@@ -65,6 +67,7 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
+
 
   </v-card>
 
@@ -87,13 +90,14 @@ const tab = ref("one");
 // Déclaration des variables réactives
 const search = ref('');
 const search_a_traiter = ref('');
-
+const total= ref('...');
 const headers= [
   {
     align: 'start',
     key: 'Numero_pret',
     sortable: false,
   },
+  { key: 'ftid', title: 'ftid' },
   { key: 'processdate', title: 'processdate' },
   { key: 'recordtype', title: 'Enreg' },
   { key: 'chequenumber', title: 'Cheque' },
@@ -352,6 +356,17 @@ const loadAllEncours = async () => {
 
 onMounted(()=>{
   loadAllEncours()
+
+  setTimeout(() => {
+    total.value=0
+    console.log(list_encours.value);
+    for (let index = 0; index < list_encours.value.length; index++) {
+        const soldeStr = list_encours.value[index].solde.replace(/,/g, '');
+        total.value += parseFloat(soldeStr);
+    }
+    total.value=total.value+' Ar'
+
+  }, 100);
 })
 function downloadCSVFromProxyData(proxyData, headers) {
   const dataArray = Array.from(proxyData);
