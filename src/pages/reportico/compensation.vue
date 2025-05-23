@@ -7,19 +7,30 @@
     <v-tabs v-model="tab" >
       <v-tab value="one">Chèques Entrants</v-tab>
       </v-tabs>
+
       <v-tabs-window v-model="tab" style="margin-top: 50px; background-color: #212121; padding: 5px 40px; border-radius: 10px;">
         <!--<v-tab value="two">Listes</v-tab>-->
       <v-tabs-window-item value="one" style=" ">
+         <button class="customize_btn" @click="show_A4_format">
+          <v-icon icon=" mdi-fullscreen" size="24" />
+          Afficher
+        </button>
         <v-card title="Tout les chèques entrants" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Rechercher..." prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
-          <v-data-table :headers="headers" :items="list_encours" @click:row="onRowClick"  v-model="selectedItems"  item-value="Numero_pret" :search="search" fixed-header height="400px" item-key="id"  ></v-data-table>
+          <v-data-table :headers="headers" :items="list_encours" @click:row="onRowClick"  v-model="selectedItems"  item-value="Numero_pret" :search="search" fixed-header height="400px" item-key="id"  >
+             <template v-slot:item.solde="{ item }">
+              {{ formatSolde(item.solde) }}
+            </template>
+            </v-data-table>
         </v-card>
       </v-tabs-window-item>
 
       <!-- Dialogue qui sera contrôlé par la fonction -->
       <v-dialog v-model="dialog" width="auto">
+
+
         <v-card style=" padding: 10px 20px;">
           <v-card-title style=" font-size: 12px;">{{ dialogTitle }}</v-card-title>
           <v-card-text>
@@ -37,10 +48,6 @@
 
 
       <v-tabs-window-item value="two">
-        <button class="customize_btn" @click="onRowClick_atraiter_">
-          <v-icon icon="mdi mdi-download-circle" size="24" />
-          Crréer le GPP
-        </button>
         <v-card title="LISTE DES DOSSIERS A TRAITER" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
@@ -50,22 +57,11 @@
       </v-tabs-window-item>
     </v-tabs-window>
 
-    <button style="position:  absolute; top: 20px; right: 20px;font-size: 12px; background-color: #212121; color: white; padding: 5px 10px; border-radius: 25px;" @click="load_database()">Charger</button>
-<span style="position: absolute; top: 20vh; right: 40px;">{{ total }}</span>
+
+    <span style="position: absolute; top: 20vh; right:200px;">{{ formatSolde(total)+' MGA' }}</span>
     <!-- Dialogue qui sera contrôlé par la fonction -->
       <v-dialog v-model="dialog_a_traiter" width="auto">
-        <v-card style=" padding: 10px 20px;">
-          <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
-          <v-card-text>
-            Creer le Fichier d'échange GPP Solidis ?
-          </v-card-text>
-          <v-card-actions>
-            <div class=""   style=" display: flex; flex-direction: row; align-items: center;">
-              <button @click="Create_It" size="24" title="Annuler" style=" color: red  ; padding: 0px 7px; margin-left: 10px; border-radius: 25px;">Oui </button>
-              <button @click="closeDialog" size="16" title="Charger le fichier" style=" background: green; padding: 0px 14px; margin-left: 10px; border-radius: 25px;">Non </button>
-            </div>
-          </v-card-actions>
-        </v-card>
+        <pdf_view :document-data="list_encours"></pdf_view>
       </v-dialog>
 
 
@@ -79,11 +75,12 @@ import { ref } from "vue";
 import { onMounted } from "vue";
 import { getData,getAllData } from '@/api/indexDB';
 import { usePopupStore } from '../../stores/store'
-
+import pdf_view from '../../components/reportico/pdf_view.vue'
 
 
 // import Cookies from 'js-cookie';
 // import Etat_encours from "./etat_encours.vue";
+//<button style="position:  absolute; top: 20px; right: 20px;font-size: 12px; background-color: #212121; color: white; padding: 5px 10px; border-radius: 25px;" @click="load_database()">Charger</button>
 
 const tab = ref("one");
 
@@ -179,6 +176,8 @@ const get_chq = async (offset,limit) => {
 
     for (let index = 0; index < response.data.list_of_data.length; index++) {
       const element = response.data.list_of_data[index];
+
+
       data_temp.value.push (element);
       list_encours.value.push (element);
       // console.log(element);
@@ -189,6 +188,23 @@ const get_chq = async (offset,limit) => {
     console.error("❌ Erreur lors de la récupération des fichiers:", error);
   }
 };
+const formatSolde=(val)=>{
+      if (!val) return '0,00';
+        // Nettoyage : supprime les virgules et transforme en nombre
+        const montant = parseFloat(val.toString().replace(/,/g, ''));
+        if (isNaN(montant)) return '0,00';
+
+          // Format FR avec espace insécable fine (U+202F)
+          let formatted = montant.toLocaleString('fr-FR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+
+        // Remplacer les espaces fines insécables par deux espaces
+        formatted = formatted.replace(/\u202F/g, '.');
+
+      return formatted;
+  }
 const load_database = async () => {
   try {
     // Sinon on fait l'appel à l’API
@@ -319,9 +335,9 @@ const send_selected_credit = async () => {
   }
 };
 
-const onRowClick_atraiter_=()=>{
+const show_A4_format=()=>{
 
-  // dialog_a_traiter.value = true;
+  dialog_a_traiter.value = true;
 
 };
 const create_gpp_ = async () => {
@@ -350,16 +366,13 @@ const loadAllEncours = async () => {
   for (let offset = 0; offset < 10000; offset += step) {
     await  get_chq (offset, step);
   }
-
   await get_list_a_traiter();
 };
 
 onMounted(()=>{
   loadAllEncours()
-
   setTimeout(() => {
     total.value=0
-    console.log(list_encours.value);
     for (let index = 0; index < list_encours.value.length; index++) {
         const soldeStr = list_encours.value[index].solde.replace(/,/g, '');
         total.value += parseFloat(soldeStr);
