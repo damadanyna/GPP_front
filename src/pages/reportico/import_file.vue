@@ -228,12 +228,12 @@ const show_popup=(file_name)=>{
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: #222; /* Fond sombre */
+  background: rgb(var(--v-theme-background));/* Fond sombre */
 }
 
 /* Boîte d'upload */
 .upload-box {
-  width: 500px;
+  width: 900px;
   height: 250px;
   background: #1e1e1e;
   border: 2px dashed #666;
@@ -248,7 +248,7 @@ const show_popup=(file_name)=>{
 
 /* Icône Upload */
 .upload-icon {
-  color: #ccc;
+  color: rgb(var(--v-theme-icon));
   margin-bottom: 10px;
 }
 
@@ -259,17 +259,28 @@ const show_popup=(file_name)=>{
   margin: 0;
 }
 
+.upload-box {
+  background-color:  rgb(var(--v-theme-surface));
+  color:  rgb(var(--v-theme-on-surface));
+}
+.upload-text {
+  color:  rgb(var(--v-theme-primary));
+}
+.upload-subtext {
+  color:  rgb(var(--v-theme-secondary));
+}
+
 /* Texte secondaire */
 .upload-subtext {
   font-size: 14px;
-  color: #bbb;
+  color:   rgb(var(--v-theme-secondary));
   margin: 10px 0;
 }
 
 /* Bouton pour choisir un fichier */
 .upload-btn {
-  border-color: #fff;
-  color: #fff;
+  border-color:  rgb(var(--v-theme-darkGray));
+  color:  rgb(var(--v-theme-darkGray));
 }
 
 /* Cacher l'input file */

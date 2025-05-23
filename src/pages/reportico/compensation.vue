@@ -8,18 +8,18 @@
       <v-tab value="one">Chèques Entrants</v-tab>
       </v-tabs>
 
-      <v-tabs-window v-model="tab" style="margin-top: 50px; background-color: #212121; padding: 5px 40px; border-radius: 10px;">
+      <v-tabs-window class="tab_window"  v-model="tab" style="margin-top: 50px;   padding: 5px 40px; border-radius: 10px;">
         <!--<v-tab value="two">Listes</v-tab>-->
       <v-tabs-window-item value="one" style=" ">
          <button class="customize_btn" @click="show_A4_format">
           <v-icon icon=" mdi-fullscreen" size="24" />
           Afficher
         </button>
-        <v-card title="Tout les chèques entrants" flat>
+        <v-card title="Tout les chèques entrants" style="background-color: rgb(var(--v-theme-background_box));" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Rechercher..." prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
-          <v-data-table :headers="headers" :items="list_encours" @click:row="onRowClick"  v-model="selectedItems"  item-value="Numero_pret" :search="search" fixed-header height="400px" item-key="id"  >
+          <v-data-table style="background-color: rgb(var(--v-theme-background_box));" :headers="headers" :items="list_encours" @click:row="onRowClick"  v-model="selectedItems"  item-value="Numero_pret" :search="search" fixed-header height="400px" item-key="id"   >
              <template v-slot:item.solde="{ item }">
               {{ formatSolde(item.solde) }}
             </template>
@@ -418,6 +418,9 @@ function downloadCSVFromProxyData(proxyData, headers) {
 </script>
 
 <style >
+.tab_window{
+   background: rgb(var(--v-theme-background_box));
+}
 tbody{
   color: gray;
 }
@@ -434,5 +437,7 @@ tbody{
   padding: 4px 10px;
   border-radius: 20px;
 }
+
+
 
   </style>
