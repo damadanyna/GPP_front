@@ -92,7 +92,13 @@ class Encours:
             conn = self.db.connect()
             cursor = conn.cursor()
             # Offset should be dynamically included in the query
-            select_query = f'SELECT * FROM eb_chq_in  where RejectCode !=""'
+            select_query =f'''SELECT reject.*,
+                                (SELECT get_sold_dav(type_sysdate, open_balance, credit_mvmt, debit_mvmt) FROM eb_cont_bal_mcbc_live_full WHERE type_sysdate IS NOT NULL
+                                    AND id= (IFNULL(
+                                        (SELECT id FROM tmp_rib_indexed WHERE tmp_rib_indexed.rib = reject.OrderingRib),
+                                        (SELECT id FROM tmp_rib_indexed WHERE tmp_rib_indexed.rib2 = reject.OrderingRib)
+                                    )) ) as solde
+                                FROM eb_chq_in  as reject where RejectCode !=""'''
             # select_query = f'SELECT * FROM etat_des_encours'
             
             # Execute the query
@@ -699,6 +705,7 @@ class Encours:
             create_table_query = """
                 CREATE TABLE IF NOT EXISTS  pj_documents (
                     ID INT AUTO_INCREMENT PRIMARY KEY,
+                    nom_dossier VARCHAR(100),        
                     numero_dossier VARCHAR(50),        
                     date_creation VARCHAR(50),                
                     filler1 TEXT,                      
@@ -715,6 +722,7 @@ class Encours:
             # Requête d'insertion
             insert_query = """
             INSERT INTO pj_documents (
+                nom_dossier,
                 numero_dossier,
                 date_creation,
                 filler1,
@@ -727,9 +735,10 @@ class Encours:
                 Date_enreg,
                 is_create
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             );   """
             values = ( 
+                    data["nom_dossier"],
                     data["numero_dossier"],
                     data["date_creation"],
                     data["filler1"],

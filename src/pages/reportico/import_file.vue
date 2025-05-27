@@ -171,7 +171,7 @@ const show_popup=(file_name)=>{
 
 
 
-<style scoped>
+<style  >
 .file_loaded{
   background: green;
   color: white;

@@ -1,6 +1,5 @@
 <!-- src/pages/home.vue or src/components/home.vue -->
 <template>
-
   <v-card style=" position: sticky; top: 13vh; z-index: 10; background-color: transparent; overflow: hidden;">
     <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
         <button class="customize_btn" @click="onRowClick_atraiter_" >
@@ -20,6 +19,8 @@
           <v-card-title style=" font-size: 12px;">{{ dialogTitle }}</v-card-title>
           <v-col width="1000px">
             {{ dialogContent.label }}
+
+
             <v-row class=" mt-10">
               <v-img
               @click="viewimg=true"
@@ -66,6 +67,7 @@
                 sm="6"
                 md="4"
               >
+
 
                 <!-- File input fields for PJ references and fillers -->
                 <v-file-input
@@ -156,6 +158,7 @@ const search = ref('');
 let is_full=ref(false)
 const today = new Date().toISOString().split("T")[0];
 const dialogData = ref({
+  "Nom du dossier": "",
   "Numéro de dossier": "",
   "Date de création": "",
   "Champ vide 1": "",
@@ -173,6 +176,7 @@ const headers= [
     key: 'Numero_pret',
     sortable: false,
   },
+{ key: 'nom_dossier', title: 'nom_dossier' },
 { key: 'numero_dossier', title: 'numero_dossier' },
 { key: 'date_creation', title: 'date_creation' },
 { key: 'filler1', title: 'filler1' },
@@ -187,6 +191,7 @@ const headers= [
 ]
 
 const header_model=[
+{ key: 'nom_dossier', title: 'nom_dossier' },
 { key: 'numero_dossier', title: 'numero dossier' },
 { key: 'date_creation', title: 'date creation' },
 { key: 'filler1', title: 'filler1' },
@@ -199,6 +204,7 @@ const header_model=[
 
 ]
 const data_model=ref({
+  nom_dossier: "",
   numero_dossier: "",
     date_creation:  "",
     filler1: "",
@@ -277,6 +283,7 @@ const extract_item = () => {
     const dataToExport = Array.isArray(data_model.value)
       ? data_model.value
       : [data_model.value];  // enveloppe l'objet dans un tableau
+    console.log(data_model.value);
 
     downloadTXTFromProxyData(dataToExport, header_model);
   }, 200);
@@ -313,6 +320,7 @@ const openDialog = (title , content) => {
   dialogContent.value.image.push({img:content.pj_cnp,label:'PJ CNP'});
 
   data_model.value={
+    nom_dossier: content.nom_dossier,
     numero_dossier: content.numero_dossier,
     date_creation:  convertirDateFr(content.date_creation),
     filler1: content.filler1,
@@ -351,6 +359,7 @@ const Create_It = async () => {
   }, 400);
 
   let row_to_send={
+  "nom_dossier":dialogData.value["Nom du dossier"],
   "numero_dossier":dialogData.value["Numéro de dossier"],
   "date_creation":dialogData.value["Date de création"],
   "filler1":dialogData.value["Champ vide 1"],
@@ -440,7 +449,7 @@ async function downloadTXTFromProxyData(proxyData, headers) {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
   }).replace(/\D/g, ''); // Remplacer tout caractère non numérique
-  const filename = `00132530-CNP-CH-00015-00001-2024-${formattedDate}.txt`;
+  const filename = `${proxyData[0].nom_dossier}.txt`;
 
   const formData = new FormData();
   formData.append("file", blob, filename);
@@ -466,7 +475,7 @@ async function downloadTXTFromProxyData(proxyData, headers) {
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `RGPP_${formattedDate}.zip`;
+    a.download = `${formattedDate}.zip`;
     a.click();
 
     // Libérer l'URL après téléchargement

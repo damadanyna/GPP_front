@@ -23,7 +23,7 @@ export const usePopupStore = defineStore('popup', () => {
     name:"d",
     password:"d",
     app:"reportico",
-    url:'/reportico/reception'
+    url:'/reportico/compensation'
   },
 ])
 

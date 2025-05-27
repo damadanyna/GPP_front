@@ -244,6 +244,7 @@ def get_liste_declarement():
         # Liste des clés
         cles =[
             'id',
+            'nom_dossier',
             'numero_dossier',
             'date_creation',
             'filler1',
@@ -285,7 +286,7 @@ def get_all_CDI():
             'RepresentReason', 'ClearanceDate', 'DatePresented', 'SettlementDate',
             'RejectCode', 'CanRcpFile', 'FtId', 'OlbFtId', 'RevOlbFt', 'HoldIntmCdtFt',
             'OVERRIDE', 'RECORD.STATUS', 'CURR.NO', 'INPUTTER', 'DATE.TIME', 'AUTHORISER',
-            'CO.CODE', 'DEPT.CODE', 'AUDITOR.CODE', 'AUDIT.DATE.TIME'
+            'CO.CODE', 'DEPT.CODE', 'AUDITOR.CODE', 'AUDIT.DATE.TIME','solde'
         ]
 
         liste_dictionnaires = [dict(zip(cles, ligne)) for ligne in data]

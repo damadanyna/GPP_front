@@ -27,59 +27,83 @@
 
       <!-- Dialogue qui affiche un formulaire en lecture seule -->
       <v-dialog v-model="dialog" width="auto">
-        <v-card style="padding: 10px 20px; max-height: 90vh; overflow-y: auto;">
+        <v-card style="padding: 10px 20px; max-height: 90.9vh; overflow-y: hidden;">
           <v-col>
             <v-card-title style="font-size: 12px;">{{ dialogTitle }}</v-card-title>
             <v-card-title style="font-size: 24; font-weight: bold;color: #FF5555;">{{ check_type() }}</v-card-title>
+
           </v-col>
           <v-card-text>
             <v-form>
-              <v-container>
-            <v-row dense>
-              <v-col
-                v-for="(value, key) in dialogData"
-                :key="key"
-                :cols="key === 'Référence de la lettre d’injonction (LI)' || key === 'Référence envoi de la lettre d’injonction' ? 12 : 6"
-                sm="6"
-                md="3"
-              >
-                <!-- Editable fields for LI references -->
-                <v-text-field
-                  v-if="key === 'Référence de la lettre d’injonction (LI)' || key === 'Référence envoi de la lettre d’injonction'"
-                  :label="key"
-                  v-model="dialogData[key]"
-                  dense
-                  variant="outlined"
-                  class="green-border"
-                 @keyup="check_key_state()"
-                />
-                <!-- File input fields for PJ references and fillers -->
-                <v-file-input
-                @change="check_key_state()"
-                  v-else-if="key === 'Référence de la pièce justificative (PJ)' || key === 'FILLER2' || key === 'FILLER3'"
-                  :label="key"
-                  v-model="dialogData[key]"
-                  dense
-                  variant="outlined"
-                  class="green-border"
-                  accept="application/pdf,image/*"
+              <v-container style=" overflow: auto; max-height: 500px;">
+                <v-row dense>
+                  <v-col
+                    v-for="(value, key) in dialogData"
+                    :key="key"
+                    :cols="key === 'Référence de la lettre d’injonction (LI)' || key === 'Référence envoi de la lettre d’injonction' ? 12 : 6"
+                    sm="6"
+                    md="3"
+                  >
+                    <v-text-field
+                      v-if="key === 'Numéro du moyen de paiement'"
+                      :label="key"
+                      :model-value="add_zero(dialogData[key])"
+                      @update:model-value="value => dialogData[key] = value"
+                      dense
+                      readonly
+                      style="opacity: .5;"
+                      variant="outlined"
+                      class="green-border"
+                    />
+                    <v-text-field
+                      v-else-if="key === 'Référence de la lettre d’injonction (LI)' || key === 'Référence envoi de la lettre d’injonction'"
+                      :label="key"
+                      v-model="dialogData[key]"
+                      dense
+                      variant="outlined"
+                      class="green-border"
+                      style=" color: #FF2222;"
+                      @keyup="check_key_state"
+                    />
 
-                  prepend-inner-icon="mdi-paperclip"
-                />
-                <!-- Readonly text fields for other keys -->
-                <v-text-field
-                  v-else
-                  :label="key"
-                  :model-value="value"
-                  readonly
-                  dense
-                  variant="outlined"
-                  style="opacity: .8;"
-                />
-              </v-col>
-            </v-row>
-          </v-container>
+                    <v-text-field
+                      v-else-if="key === 'Date d’envoi de la lettre d’injonction'"
+                      v-model="dialogData[key]"
+                      :label="key"
+                      type="date"
+                      variant="outlined"
+                      density="compact"
+                      dense
+                      :max="today"
+                      class="green-border"
+                      @update:model-value="check_key_state"
+                      style=" color: #FF2222;"
+                    />
+                    <v-file-input
+                      @change="check_key_state()"
+                      v-else-if="key === 'Référence de la pièce justificative (PJ)' || key === 'FILLER2' || key === 'FILLER3'"
+                      :label="key"
+                      v-model="dialogData[key]"
+                      dense
+                      variant="outlined"
+                      class="green-border"
+                      accept="application/pdf,image/*"
+                      style=" color: #FF2222;"
 
+                      prepend-inner-icon="mdi-paperclip"
+                    />
+                    <v-text-field
+                      v-else
+                      :label="key"
+                      :model-value="value"
+                      readonly
+                      dense
+                      variant="outlined"
+                      style="color: white;"
+                    />
+                  </v-col>
+                </v-row>
+              </v-container>
             </v-form>
           </v-card-text>
           <v-card-actions>
@@ -89,10 +113,6 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
-
-
-
-
       <v-tabs-window-item value="two">
         <button class="customize_btn" @click="onRowClick_atraiter_">
           <v-icon icon="mdi mdi-download-circle" size="24" />
@@ -106,8 +126,6 @@
         </v-card>
       </v-tabs-window-item>
     </v-tabs-window>
-
-
     <v-dialog v-model="dialog_a_traiter" width="auto">
       <v-card style=" padding: 10px 20px;">
         <v-card-title style=" font-size: 12px;">Confirmation</v-card-title>
@@ -224,7 +242,7 @@ const headers_a_traiter= [
   { key: "reference_lettre_injonction", title: "Référence de la lettre d'injonction" },
   { key: "date_lettre_injonction", title: "Date d'établissement de la lettre d'injonction" },
   { key: "reference_envoi_lettre_injonction", title: "Référence envoi de la lettre d'injonction" },
-  { key: "date_envoi_lettre_injonction", title: "Date d'envoi de la lettre d'injonction" },
+  { key: "date_envoi_lettre_injonction", title: "Date d’envoi de la lettre d’injonction" },
   { key: "existence_pj", title: "Existence de la pièce justificative (PJ)" },
   { key: "date_pj", title: "Date de la pièce justificative" },
   { key: "reference_pj", title: "Référence de la pièce justificative (PJ)" },
@@ -255,13 +273,13 @@ const header_model=[
   { key: "nom_beneficiaire", title: "Nom du bénéficiaire" },
   { key: "nom_banque_presentateur", title: "Nom de la Banque présentateur" },
   { key: "motif_refus", title: "Motif du refus" },
-  { key: "solde_compte_rejet", title: "Solde du compte au moment de rejet" },
+  { key: "solde", title: "Solde du compte au moment de rejet" },
   { key: "sens_solde", title: "Sens du solde" },
   { key: "reference_effet_impaye", title: "Référence de l'effet impayé" },
   { key: "reference_lettre_injonction", title: "Référence de la lettre d'injonction" },
   { key: "date_lettre_injonction", title: "Date d'établissement de la lettre d'injonction" },
   { key: "reference_envoi_lettre_injonction", title: "Référence envoi de la lettre d'injonction" },
-  { key: "date_envoi_lettre_injonction", title: "Date d'envoi de la lettre d'injonction" },
+  { key: "date_envoi_lettre_injonction", title: "Date d’envoi de la lettre d’injonction" },
   { key: "existence_pj", title: "Existence de la pièce justificative (PJ)" },
   { key: "date_pj", title: "Date de la pièce justificative" },
   { key: "reference_pj", title: "Référence de la pièce justificative (PJ)" },
@@ -299,6 +317,8 @@ const get_list_cdi = async (offset, limit) => {
       const element = response.data.list_of_data[index];
       data_temp.value.push (element);
       list_encours.value.push (element);
+      console.log(element);
+
       // list_encours.value=data_temp.value[0]
     }
 
@@ -367,6 +387,9 @@ function check_type() {
 
   return 'Type inconnu';
 }
+function add_zero(elt) {
+  return '00'+elt;
+}
 
 
 // Classe de la ligne sélectionnée
@@ -388,6 +411,7 @@ const openDialog = (title,content,data) => {
   dialogTitle.value = title;
   dialogContent.value = content;
   dialog.value = true;
+
   dialogData.value= transformDialogData(data)
 };
 const closeDialog = () => {
@@ -429,7 +453,7 @@ const addIt = async () => {
   "FILLER2":dialogData.value["FILLER2"].name,
   "FILLER3":dialogData.value["FILLER3"].name,
   "FILLER4":dialogData.value["FILLER4"],
-  "FILLER5":dialogData.value["FILLER5"]}
+  "FILLER5":dialogData.value["FILLER5"],}
 
   // 2. Récupère les fichiers (de type File)
   let files = {
@@ -438,7 +462,9 @@ const addIt = async () => {
     "RéférencePJ": dialogData.value["Référence de la pièce justificative (PJ)"] // fichier
   };
 
-  send_selected_credit(object_elt,files)
+  console.log("object_elt",object_elt)  ;
+
+  // send_selected_credit(object_elt,files)
   // get_list_a_traiter()
 };
 
@@ -639,7 +665,7 @@ const check_key_state =()=>{
 
 function transformDialogData(sourceData) {
   const mapping = {
-    "BeneficiaryRib": "000"+sourceData.OrderingRib,
+    "BeneficiaryRib": "000"+sourceData.BeneficiaryRib,
     "Code de l'établissement" : sourceData.ID.split("-")[2],
     "Code de l'Agence" :sourceData.ID.split("-")[3],
     "OrderingRib": '000'+sourceData.OrderingRib,
@@ -656,7 +682,7 @@ function transformDialogData(sourceData) {
     "Nom de la Banque présentateur ": sourceData.OrderingName,
     "Motif du refus": "", // pourrait être sourceData.RejectCode ou ErrorMessage ?
     "Qolde du compte au moment de rejet": "", // probablement sourceData.ProcessStatus ou autre
-    "Solde du compte au moment de rejet": "", // champ libre
+    "Solde du compte au moment de rejet": sourceData.solde, // champ libre
     "Sens du solde": "", // champ libre
     "Référence de l’effet impayé":"",
     "Référence de la lettre d’injonction (LI)":"",
@@ -734,8 +760,7 @@ tbody{
   border-radius: 20px;
 }
 .green-border .v-input__control {
-  border: none;
-  border: 2px solid rgb(255, 255, 255) ;
+  border: 2px solid rgb(114, 255, 13) ;
   border-radius: 10px;
 }
 
