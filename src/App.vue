@@ -110,14 +110,14 @@ const listItems = ref([{
         icon: ' mdi-clipboard-list-outline',
         title: 'Déclaration ANP',
       value: 'Déclaration ANP',
-        to: '/' + Cookies.get('app') + '/list_cdi',
+        to: '/' + Cookies.get('app') + '/declaration_ANP',
         type: 'cdi'
     },
     {
         icon: ' mdi-invoice-send-outline',
         title: 'Régularisation & non Reg',
         value: 'Régularisation & non Reg',
-        to: '/' + Cookies.get('app') + '/cdi_declarement',
+        to: '/' + Cookies.get('app') + '/regularisation_non_Reg',
         type: 'cdi'
     },
     {

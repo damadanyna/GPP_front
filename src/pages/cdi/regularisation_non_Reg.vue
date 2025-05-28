@@ -433,11 +433,20 @@ async function downloadTXTFromProxyData(proxyData, headers) {
     return;
   }
 
-  const dataArray = Array.isArray(proxyData) ? proxyData : [proxyData];
 
-  // Génération uniquement des lignes, sans les titres
+  const dataArray = Array.isArray(proxyData) ? proxyData : [proxyData];
+  const nom_dossier_= dataArray[0].nom_dossier
+  // Supprimer la clé dans chaque objet
+  dataArray.forEach(obj => {
+    delete obj.nom_dossier;
+  });
+
+  // Supprimer aussi l'en-tête correspondant
+  const filteredHeaders = headers.filter(h => h.key !== 'nom_dossier');
+
+  // Génération des lignes, sans titres
   const txtRows = dataArray.map(row =>
-    headers.map(h => (row[h.key] ?? "")).join(";")
+    filteredHeaders.map(h => (row[h.key] ?? "")).join(";")
   );
 
   const txtContent = txtRows.join("\n");
@@ -449,7 +458,7 @@ async function downloadTXTFromProxyData(proxyData, headers) {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
   }).replace(/\D/g, ''); // Remplacer tout caractère non numérique
-  const filename = `${proxyData[0].nom_dossier}.txt`;
+  const filename = `${nom_dossier_}.txt`;
 
   const formData = new FormData();
   formData.append("file", blob, filename);
