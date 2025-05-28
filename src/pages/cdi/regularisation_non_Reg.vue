@@ -332,7 +332,6 @@ const openDialog = (title , content) => {
     pj_anr:  content.pj_anr
   }
 
-  console.log(data_model.value) ;
 
   dialog.value = true;
 

@@ -594,9 +594,9 @@ class Encours:
                 type_moyen_paiement VARCHAR(50),
                 numero_moyen_paiement VARCHAR(50),
                 montant_moyen_paiement DECIMAL(15, 2),
-                date_emission DATE,
-                date_presentation DATE,
-                date_echeance DATE,
+                date_emission text,
+                date_presentation text,
+                date_echeance text,
                 identification_beneficiaire VARCHAR(100),
                 nom_beneficiaire VARCHAR(100),
                 nom_banque_presentateur VARCHAR(100),
@@ -605,11 +605,11 @@ class Encours:
                 sens_solde VARCHAR(10),
                 reference_effet_impaye VARCHAR(50),
                 reference_lettre_injonction VARCHAR(50),
-                date_lettre_injonction DATE,
+                date_lettre_injonction text,
                 reference_envoi_lettre_injonction VARCHAR(50),
-                date_envoi_lettre_injonction DATE,
+                date_envoi_lettre_injonction text,
                 existence_pj BOOLEAN,
-                date_pj DATE,
+                date_pj text,
                 reference_pj VARCHAR(100),
                 filler2 VARCHAR(100),
                 filler3 VARCHAR(100),
@@ -640,6 +640,7 @@ class Encours:
             );
 
             """
+             
             values = ( 
                     data["Code de l'établissement"],                          # code_etablissement
                     data["Code de l'Agence"],                                 # code_agence
@@ -648,23 +649,23 @@ class Encours:
                     data["Identification du 1er, 2è, … contrevenants mandataires signataires"],  # identification_contrevenants
                     data["Type du moyen de paiement"],                        # type_moyen_paiement
                     data["Numéro du moyen de paiement"],                      # numero_moyen_paiement
-                   data["Montant du moyen de paiement"],           # montant_moyen_paiement
-                    parse_date(data["Date d’émission"]),                      # date_emission
-                    parse_date(data["Date de présentation"]),                 # date_presentation
-                    parse_date(data["Date d’échéance"]),                      # date_echeance
+                    data["Montant du moyen de paiement"],                       # montant_moyen_paiement
+                    data["Date d’émission"],                      # date_emission
+                    data["Date de présentation"],                 # date_presentation
+                    data["Date d’échéance"],                      # date_echeance
                     data["Identification du bénéficiaire"],                   # identification_beneficiaire
                     data["Nom du bénéficiaire"],                              # nom_beneficiaire
                     data["Nom de la Banque présentateur "],                   # nom_banque_presentateur
                     data["Motif du refus"],                                   # motif_refus
-                   data["Solde du compte au moment de rejet"],     # solde_compte_rejet
+                    data["Solde du compte au moment de rejet"],     # solde_compte_rejet
                     data["Sens du solde"],                                    # sens_solde
                     data["Référence de l’effet impayé"],                      # reference_effet_impaye
                     data["Référence de la lettre d’injonction (LI)"],         # reference_lettre_injonction
-                    parse_date(data["Date d’établissement de la lettre d’injonction"]),  # date_lettre_injonction
+                    data["Date d’établissement de la lettre d’injonction"],  # date_lettre_injonction
                     data["Référence envoi de la lettre d’injonction"],        # reference_envoi_lettre_injonction
-                    parse_date(data["Date d’envoi de la lettre d’injonction"]),  # date_envoi_lettre_injonction
+                    data["Date d’envoi de la lettre d’injonction"],  # date_envoi_lettre_injonction
                     data["Existence de la pièce justificative (PJ)"],  # existence_pj
-                    parse_date(data["Date de la pièce justificative"]),       # date_pj
+                    data["Date de la pièce justificative"],       # date_pj
                     data["Référence de la pièce justificative (PJ)"],         # reference_pj
                     data["FILLER2"],                                          # filler2
                     data["FILLER3"],                                          # filler3

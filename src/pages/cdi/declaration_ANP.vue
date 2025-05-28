@@ -277,7 +277,7 @@ const header_model=[
   { key: "sens_solde", title: "Sens du solde" },
   { key: "reference_effet_impaye", title: "Référence de l'effet impayé" },
   { key: "reference_lettre_injonction", title: "Référence de la lettre d'injonction" },
-  { key: "date_lettre_injonction", title: "Date d'établissement de la lettre d'injonction" },
+  { key: "date_lettre_injonction",  title: "Date d'établissement de la lettre d'injonction"},
   { key: "reference_envoi_lettre_injonction", title: "Référence envoi de la lettre d'injonction" },
   { key: "date_envoi_lettre_injonction", title: "Date d’envoi de la lettre d’injonction" },
   { key: "existence_pj", title: "Existence de la pièce justificative (PJ)" },
@@ -317,7 +317,6 @@ const get_list_cdi = async (offset, limit) => {
       const element = response.data.list_of_data[index];
       data_temp.value.push (element);
       list_encours.value.push (element);
-      console.log(element);
 
       // list_encours.value=data_temp.value[0]
     }
@@ -359,6 +358,14 @@ const get_list_a_traiter = async ( ) => {
           const date = new Date(newItem.Datouv);
           newItem.Datouv = date.getDate().toString().padStart(2, '0') + '.' +
                           (date.getMonth() + 1).toString().padStart(2, '0') + '.' +
+                          date.getFullYear();
+        }
+
+        // Formater Datouv si elle existe
+        if (newItem.date_envoi_lettre_injonction) {
+          const date = new Date(newItem.date_envoi_lettre_injonction);
+          newItem.date_envoi_lettre_injonction = date.getDate().toString().padStart(2, '0') + '/' +
+                          (date.getMonth() + 1).toString().padStart(2, '0') + '/' +
                           date.getFullYear();
         }
 
@@ -533,6 +540,12 @@ const onRowClick_atraiter_=()=>{
   dialog_a_traiter.value = true;
 
 };
+function formatDateFR(dateStr) {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-");
+  console.log(`formatDateFR called with ${dateStr} → ${day}/${month}/${year}`);
+  return `${day}/${month}/${year}`;
+}
 
 const create_gpp_ = async () => {
   try {
