@@ -8,7 +8,7 @@
     </v-tabs>
     <v-tabs-window v-model="tab" style="margin-top: 50px; background-color: #212121; padding: 5px 40px; border-radius: 10px;">
       <v-tabs-window-item value="one" style=" ">
-        <v-card title="Liste des CDI" flat>
+        <v-card title="Liste des Déclarations" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
@@ -118,7 +118,7 @@
           <v-icon icon="mdi mdi-download-circle" size="24" />
           Génerer le '.txt'
         </button>
-        <v-card title="LISTE DES DOSSIERS A TRAITER" flat>
+        <v-card title="Liste des déclarations faites" flat>
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
@@ -464,8 +464,8 @@ const addIt = async () => {
 
   console.log("object_elt",object_elt)  ;
 
-  // send_selected_credit(object_elt,files)
-  // get_list_a_traiter()
+  send_selected_credit(object_elt,files)
+  get_list_a_traiter()
 };
 
 function add_date(dateStr, daysToAdd) {

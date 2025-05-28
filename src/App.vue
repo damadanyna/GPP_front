@@ -108,22 +108,22 @@ const listItems = ref([{
     },
     {
         icon: ' mdi-clipboard-list-outline',
-        title: 'List CDI',
-      value: 'List CDI',
+        title: 'Déclaration ANP',
+      value: 'Déclaration ANP',
         to: '/' + Cookies.get('app') + '/list_cdi',
         type: 'cdi'
     },
     {
         icon: ' mdi-invoice-send-outline',
-        title: 'Déclarations',
-        value: 'Déclarations',
+        title: 'Régularisation & non Reg',
+        value: 'Régularisation & non Reg',
         to: '/' + Cookies.get('app') + '/cdi_declarement',
         type: 'cdi'
     },
     {
         icon: 'mdi-file-chart-outline',
-        title: 'Fichier',
-        value: 'Fichier',
+        title: 'Importation Fichier',
+        value: 'Importation Fichier',
         to: '/' + Cookies.get('app') + '/cdi_import_file',
         type: 'cdi'
     },
