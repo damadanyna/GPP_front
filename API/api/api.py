@@ -7,6 +7,7 @@ import os
 import json 
 import zipfile
 import uuid
+import traceback
 
 
 # Créer un blueprint pour organiser l'API
@@ -41,6 +42,18 @@ def upload():
 
     return jsonify(result), 200 if 'message' in result else 400
 
+@api_bp.route('/upload_multiple_files', methods=['POST'])
+def upload_multiple_files():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Aucun fichier trouvé'}), 400
+
+    files = request.files.getlist('file')  # Liste de fichiers
+    app_name = request.form.get('app')
+
+    result = encours.upload_multiple_files(files, app_name)
+
+    return jsonify(result), 200
+
 @api_bp.route('/create_table', methods=['POST'])
 def create_table():
     """
@@ -66,10 +79,12 @@ def show_files():
     """
     Route pour récupérer la liste des fichiers XLSX dans le dossier 'load_file'.
     """
-    app_name = request.args.get('app')  # Récupère le paramètre 'app' de la requête GET
-    files = encours.show_files(app=app_name)  # Passe le paramètre à ta fonction
+    app_name = request.args.get('app')  
+    files = encours.show_files(app=app_name)   
+    if app_name =='cdi':
+        files = encours.show_CDI_files(app=app_name)
     return jsonify({'files': files})
-
+ 
 @api_bp.route('/insert_credit_row', methods=['POST'])
 def insert_credit_row():
     """
@@ -220,7 +235,23 @@ def int_compense():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
- 
+
+@api_bp.route('/init_cdi', methods=['GET'])
+def init_compense():
+    try:
+        # Appelle une méthode qui initialise toutes les fonctions et objets SQL
+        result = encours.run_initialisation_sql()
+
+        # Statut HTTP basé sur les erreurs détectées dans le résultat
+        has_error = any(step.get("status") == "error" for step in result)
+
+        return jsonify({"result": result, "has_error": has_error}), 200
+
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
 @api_bp.route('/import_tables_to_sipem_app', methods=['GET'])
 def import_tables_to_sipem_app(): 
     try:  # récupère l'offset de l'URL

@@ -1,64 +1,47 @@
 <template>
+
   <div id="upload-container">
+    <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
     <v-card class="upload-box" outlined>
-      <!-- Icône Upload -->
       <v-icon size="48" class="upload-icon">mdi-cloud-upload</v-icon>
-
-      <!-- Texte principal -->
       <p class="upload-text">Glissez le fihcer ici</p>
-
-      <!-- Texte secondaire -->
       <p class="upload-subtext">ou choisissez localement</p>
-
-      <!-- Bouton pour sélectionner un fichier -->
-     <div class="" style=" display: flex; flex-direction: row; align-items: center;">
-      <v-btn variant="outlined" class="upload-btn " @click="triggerFileInput" id="file_name" >
-        {{ file_name }}
-      </v-btn>
-      <div class="" v-if="is_exist_file==true" style=" display: flex; flex-direction: row; align-items: center;">
-        <v-icon @click="cancel" size="24" title="Annuler" style=" color: red  ; padding: 20px; margin-left: 10px; border-radius: 25px;">mdi-file-remove-outline </v-icon>
-        <v-icon @click="uploadFile" size="16" title="Charger le fichier" style=" background: green; padding: 12px; margin-left: 10px; border-radius: 25px;"> mdi-check </v-icon>
-
+      <div style="display: flex; flex-direction: row; align-items: center;">
+        <v-btn variant="outlined" class="upload-btn" @click="triggerFileInput" id="file_name">  {{ file_name }}</v-btn>
+        <div v-if="is_exist_file" style="display: flex; flex-direction: row; align-items: center;">
+          <v-icon @click="cancel" size="24" title="Annuler" style="color: red; padding: 20px; margin-left: 10px; border-radius: 25px;">mdi-file-remove-outline</v-icon>
+          <v-icon @click="uploadFile" size="16" title="Charger le fichier" style="background: green; padding: 12px; margin-left: 10px; border-radius: 25px;"> mdi-check</v-icon>
+        </div>
       </div>
-    </div>
-
-      <!-- Input caché pour l'upload -->
-      <input type="file" accept=".xlsx"  ref="fileInput" class="hidden-file-input" @change="handleFileUpload">
+      <ul v-if="file_names.length > 0" style="margin-top: 10px; list-style: none; padding-left: 0;">
+        <li v-for="(name, index) in file_names" :key="index" style="display: flex; align-items: center;">
+          <v-icon size="14" style="margin-right: 5px;">mdi-file</v-icon> {{ name }}
+        </li>
+      </ul>
+      <input type="file" accept=".csv" multiple ref="fileInput" class="hidden-file-input" @change="handleFileUpload">
     </v-card>
     <v-dialog max-width="500">
       <template v-slot:activator="{ props: activatorProps }">
-        <v-btn
-        @click="showFiles"
-        id="history"
-          v-bind="activatorProps"
-          icon=" mdi-history"
-          variant="flat"
-        ></v-btn>
+        <v-btn @click="showFiles" id="history"   v-bind="activatorProps"   icon=" mdi-history"   variant="flat" ></v-btn>
       </template>
-
       <template v-slot:default="{ isActive }">
         <v-card title="Liste récente">
-          <div style=" max-height: 400px;overflow-y: auto; " @click=" isActive.value = false">
-            <div v-for="item,i in list_file" :key="i" @click="show_popup(item.file_name)" style=" display: flex; justify-content: center; width: 100%; font-size: 12px; ">
-              <div class="" style=" width: 300px;">
+          <div style=" max-height: 400px;overflow-y: auto;padding: 0px 30px; " @click=" isActive.value = false">
+            <div v-for="item,i in list_file" :key="i" @click="show_popup(item.file_name)" style=" display: flex; justify-content: start; width: 100%; padding: 0px 0px;border-bottom: 1px solid gray; font-size: 12px; ">
+              <div class=" "   >
                 <div v-if=" item.used==true" style="color: green; border: 1px solid green; padding: 2px 10px; border-radius: 10px;margin: 2px;">
-                  <span>{{resize_text( item.file_name,40) }}</span>
+                  <span>{{resize_text( item.file_name,100) }}</span>
                   <v-icon size="20"> mdi-check</v-icon>
                 </div>
                 <div v-else style=" padding: 2px 10px; cursor: pointer; margin: 2px;">
-                  <span>{{resize_text( item.file_name,40) }}</span>
+                  <v-icon size="14" style="margin-right: 5px;">mdi-file</v-icon>  <span>{{resize_text( item.file_name,100) }}</span>
                 </div>
               </div>
             </div>
-           </div>
-
+          </div>
           <v-card-actions>
             <v-spacer></v-spacer>
-
-            <v-btn
-              text="Fermer"
-              @click="isActive.value = false"
-            ></v-btn>
+            <v-btn text="Fermer" @click="isActive.value = false" ></v-btn>
           </v-card-actions>
         </v-card>
       </template>
@@ -72,10 +55,12 @@ import api from '@/api/axios'
 import { usePopupStore } from '../../stores/store'
 import Cookies from 'js-cookie'
 
+
+const file_names = ref([]);  // noms des fichiers
+const file_name = ref("Importer un fichier");
 const fileInput = ref(null)
 const files_data = ref(null)
-const is_exist_file=ref(false)
-
+const is_exist_file = ref(false);
 // Fonction pour ouvrir la boîte de dialogue de sélection de fichiers
 const triggerFileInput = () => {
   fileInput.value.click()
@@ -83,32 +68,9 @@ const triggerFileInput = () => {
 const list_file=ref([])
 const app_type=ref( Cookies.get('app'))
 // Créer une variable réactive pour stocker le nom du fichier
-const file_name = ref("Fichier Local du Système");
 // Fonction pour gérer l'upload (facultatif)
-const handleFileUpload = (event) => {
-  const file = event.target.files[0]
-  const elt_=document.getElementById('file_name')
 
-  if (file) {
-    console.log('Fichier sélectionné :', file.name)
-    files_data.value = event.target.files[0];
 
-    file_name.value= file.name
-    elt_.classList.add('file_loaded')
-    is_exist_file.value=true
-  }
-
-}
-const cancel=()=>{
-  file_name.value= "Fichier Local du Système"
-  const elt_=document.getElementById('file_name')
-  // fileInput.value=null
-  is_exist_file.value=false
-  elt_.classList.remove('file_loaded')
-  const files_data = document.querySelector('input[type="file"]');
-  files_data.value = null;
-  // console.log(files_data.value);
-}
 const resize_text = (text, size) => {
   if (typeof text !== 'string' || text === null) {
     return ''; // Si 'text' n'est pas une chaîne ou est null, on retourne une chaîne vide
@@ -121,21 +83,69 @@ const resize_text = (text, size) => {
   return text;
 };
 
+const handleFileUpload = (event) => {
+  const files = event.target.files;
+  const elt_ = document.getElementById('file_name');
+
+  if (files.length > 5) {
+    alert("Vous ne pouvez sélectionner que jusqu'à 5 fichiers.");
+    event.target.value = ""; // reset
+    file_name.value = "Importer un fichier";
+    file_names.value = [];
+    files_data.value = [];
+    elt_.classList.remove('file_loaded');
+    is_exist_file.value = false;
+    return;
+  }
+
+  const file = files[0];
+  if (file) {
+    console.log('Fichier sélectionné :', file.name);
+    files_data.value = Array.from(files); // tous les fichiers
+    file_names.value = Array.from(files).map(f => f.name); // noms des fichiers
+    file_name.value = `${files.length} fichier(s) sélectionné(s)`;
+    elt_.classList.add('file_loaded');
+    is_exist_file.value = true;
+  }
+};
+
+
+
+const cancel = () => {
+  fileInput.value.value = "";
+  file_name.value = "Importer un fichier";
+  file_names.value = [];
+  files_data.value = [];
+  is_exist_file.value = false;
+  document.getElementById('file_name').classList.remove('file_loaded');
+
+};
 const uploadFile = () => {
-  // console.log(files_data.value);
-
   const formData = new FormData();
-  formData.append('file', files_data.value);
-  formData.append('app',  app_type.value);
 
-  api.post('/api/upload', formData, {
+  // Ajouter chaque fichier individuellement avec la même clé "file"
+  files_data.value.forEach((file, index) => {
+    formData.append('file', file); // ou formData.append(`file[${index}]`, file);
+  });
+
+  formData.append('app', app_type.value);
+
+  api.post('/api/upload_multiple_files', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
   })
   .then((response) => {
     console.log(response.data);
+    // éventuellement vider les fichiers après succès
+    files_data.value = [];
+    file_names.value = [];
+    file_name.value = "Importer un fichier";
+    is_exist_file.value = false;
 
+    usePopupStore().show_notification.status=true
+    usePopupStore().show_notification.message='Fichier importé'
+    usePopupStore().show_notification.ico='mdi mdi-check'
   })
   .catch((error) => {
     console.error(error);
@@ -234,7 +244,6 @@ const show_popup=(file_name)=>{
 /* Boîte d'upload */
 .upload-box {
   width: 500px;
-  height: 250px;
   background: #1e1e1e;
   border: 2px dashed #666;
   display: flex;

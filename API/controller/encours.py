@@ -15,33 +15,56 @@ class Encours:
         self.db = DB() 
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
-    def upload_file(self, file, app_name):
-        """
-        Cette méthode permet de télécharger un fichier et de l'enregistrer dans le dossier 'load_file/app'
-        si un 'app' est fourni, sinon dans 'load_file'.
-        """
-        if file and self.allowed_file(file.filename):
-            filename = secure_filename(file.filename)
+    # def upload_file(self, file, app_name):
+    #     """
+    #     Cette méthode permet de télécharger un fichier et de l'enregistrer dans le dossier 'load_file/app'
+    #     si un 'app' est fourni, sinon dans 'load_file'.
+    #     """
+    #     if file and self.allowed_file(file.filename):
+    #         filename = secure_filename(file.filename)
 
-            # Détermine le chemin du dossier où enregistrer le fichier, selon l'app (ou le dossier par défaut)
-            folder_path = os.path.join(self.upload_folder, app_name) if app_name else self.upload_folder
+    #         # Détermine le chemin du dossier où enregistrer le fichier, selon l'app (ou le dossier par défaut)
+    #         folder_path = os.path.join(self.upload_folder, app_name) if app_name else self.upload_folder
 
-            # Créer le dossier s'il n'existe pas
-            os.makedirs(folder_path, exist_ok=True)
+    #         # Créer le dossier s'il n'existe pas
+    #         os.makedirs(folder_path, exist_ok=True)
 
-            filepath = os.path.join(folder_path, filename)
-            file.save(filepath)
+    #         filepath = os.path.join(folder_path, filename)
+    #         file.save(filepath)
 
-            return {'message': 'File successfully uploaded', 'filename': filename}
+    #         return {'message': 'File successfully uploaded', 'filename': filename}
         
+    #     return {'error': 'Invalid file format'}
+    
+    def upload_file(self, file, app_name): 
+        if file and self.allowed_file(file.filename): 
+            filename = secure_filename(file.filename)
+            folder_path = os.path.join(self.upload_folder, app_name) if app_name else self.upload_folder
+            os.makedirs(folder_path, exist_ok=True)
+            filepath = os.path.join(folder_path, filename)  
+            file.save(filepath)
+            return {'message': 'File successfully uploaded', 'filename': filename, 'path': filepath}
+ 
         return {'error': 'Invalid file format'}
-
+    
     def allowed_file(self, filename):
         """
         Vérifie si l'extension du fichier est autorisée
         """
-        ALLOWED_EXTENSIONS = {'xlsx'}
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+        ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
+        if '.' in filename:
+            ext = filename.rsplit('.', 1)[1].lower()
+            print("Extension détectée:", ext)
+            return ext in ALLOWED_EXTENSIONS
+        return False
+
+    def upload_multiple_files(self, files, app_name):
+        results = []
+        for file in files:
+            result = self.upload_file(file, app_name) 
+            results.append(result)
+        return results
+
 
     def show_files(self, app=None): 
         """
@@ -59,6 +82,29 @@ class Encours:
 
         for filename in os.listdir(folder_path):
             if filename.endswith('.xlsx') or filename.endswith('.XLSX'):
+                files.append({
+                    "used": False,
+                    "file_name": filename
+                })
+        
+        return files
+ 
+    def show_CDI_files(self, app=None): 
+        """
+        Récupère la liste des fichiers xlsx dans le sous-dossier 'load_file/app'
+        et les retourne sous forme d'objets : {"used": False, "file_name": "nom.xlsx"}
+        """
+        files = []
+        
+        # Construction du chemin vers le sous-dossier, en utilisant 'app' s'il est fourni
+        folder_path = os.path.join(self.upload_folder, app) if app else self.upload_folder
+
+        # Vérifie que le dossier existe
+        if not os.path.exists(folder_path):
+            return []  # Ou éventuellement retourner une erreur personnalisée
+
+        for filename in os.listdir(folder_path):
+            if filename.endswith('.csv') or filename.endswith('.CSV'):
                 files.append({
                     "used": False,
                     "file_name": filename
@@ -407,6 +453,7 @@ class Encours:
             import traceback
             print(f"[DEBUG] Traceback complet : {traceback.format_exc()}")
             return {'error': error_msg}
+        
         
     def clean_filename(filename):
     # Enlever l'extension
@@ -767,5 +814,237 @@ class Encours:
         finally:
             if conn:
                 conn.close()
+                
+    def run_initialisation_sql(self):
+        try:
+            conn = self.db.connect()
+            cursor = conn.cursor()
+            
+            create_table_query ="""
+                CREATE TABLE IF NOT EXISTS init_status (
+                    name VARCHAR(255) PRIMARY KEY,  
+                    status VARCHAR(20) NOT NULL,   
+                    message TEXT,                  
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                );"""
 
+            cursor.execute(create_table_query)
+            
+            steps = [ 
+                     
+                {
+                    "name": "drop_table_tmp_rib_indexed",
+                    "sql": """
+                        drop table if exists tmp_rib_indexed ;
+                    """
+                },
+                {
+                    "name": "create_find_matching_positions",
+                    "sql": """
+                        CREATE FUNCTION IF NOT EXISTS find_matching_positions(type_sysdate TEXT, prefixes TEXT)
+                        RETURNS TEXT
+                        DETERMINISTIC
+                        BEGIN
+                            DECLARE token TEXT;
+                            DECLARE remaining TEXT;
+                            DECLARE result TEXT DEFAULT '';
+                            DECLARE position INT DEFAULT 0;
+                            DECLARE sep_pos INT;
 
+                            SET remaining = type_sysdate;
+
+                            WHILE LENGTH(remaining) > 0 DO
+                                SET sep_pos = LOCATE('|', remaining);
+                                IF sep_pos = 0 THEN
+                                    SET token = remaining;
+                                    SET remaining = '';
+                                ELSE
+                                    SET token = LEFT(remaining, sep_pos - 1);
+                                    SET remaining = SUBSTRING(remaining, sep_pos + 1);
+                                END IF;
+
+                                IF FIND_IN_SET(token, prefixes) > 0 THEN
+                                    SET result = CONCAT(result, ',', position);
+                                END IF;
+
+                                SET position = position + 1;
+                            END WHILE;
+
+                            RETURN result;
+                        END
+                    """
+                },
+                {
+                    "name": "create_get_capital_non_appele",
+                    "sql": """ 
+                            CREATE FUNCTION get_capital_non_appele(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
+                            RETURNS DECIMAL(20,2)
+                            DETERMINISTIC
+                            BEGIN
+                                DECLARE pos TEXT;
+                                SET pos = find_matching_positions(type_sysdate, 'CURACCOUNT,DUEACCOUNT');
+                                RETURN
+                                    IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
+                                    IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
+                                    IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
+                            END
+                    """
+                },
+                {
+                    "name": "create_get_capital_appele",
+                    "sql": """ 
+                            CREATE FUNCTION get_capital_appele(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
+                            RETURNS DECIMAL(20,2)
+                            DETERMINISTIC
+                            BEGIN
+                                DECLARE pos TEXT;
+                                SET pos = find_matching_positions(type_sysdate, 'PA1ACCOUNT,PA2ACCOUNT,PA3ACCOUNT,PA4ACCOUNT');
+                                RETURN
+                                    IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
+                                    IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
+                                    IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
+                            END
+                    """
+                },
+                {
+                    "name": "create_sum_values_at_positions",
+                    "sql": """
+                        CREATE FUNCTION IF NOT EXISTS sum_values_at_positions_(values_str TEXT, positions_str TEXT)
+                        RETURNS DECIMAL(20,2)
+                        DETERMINISTIC
+                        BEGIN
+                            DECLARE total DECIMAL(20,2) DEFAULT 0;
+                            DECLARE current_index INT DEFAULT 0;
+                            DECLARE val TEXT;
+                            DECLARE sep_pos INT;
+
+                            SET values_str = CONCAT(values_str, '|');
+                            SET sep_pos = LOCATE('|', values_str);
+
+                            WHILE sep_pos > 0 DO
+                                SET val = SUBSTRING(values_str, 1, sep_pos - 1);
+
+                                IF LOCATE(CONCAT(',', current_index, ','), CONCAT(',', positions_str, ',')) > 0 THEN
+                                    IF val IS NOT NULL AND val != '' THEN
+                                        SET total = total + CAST(val AS DECIMAL(20,2));
+                                    END IF;
+                                END IF;
+
+                                SET values_str = SUBSTRING(values_str, sep_pos + 1);
+                                SET sep_pos = LOCATE('|', values_str);
+                                SET current_index = current_index + 1;
+                            END WHILE;
+
+                            RETURN total;
+                        END
+                    """
+                },
+                {
+                    "name": "create_get_capital_total",
+                    "sql": """
+                        CREATE FUNCTION IF NOT EXISTS get_capital_TOTAL(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
+                        RETURNS DECIMAL(20,2)
+                        DETERMINISTIC
+                        BEGIN 
+                            DECLARE pos TEXT;
+                            DECLARE total DECIMAL(20,2);
+
+                            SET pos = find_matching_positions(type_sysdate, 'CURACCOUNT,DUEACCOUNT,PA1ACCOUNT,PA2ACCOUNT,PA3ACCOUNT,PA4ACCOUNT');
+
+                            SET total = 
+                                IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
+                                IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
+                                IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
+
+                            RETURN total;
+                        END
+                    """
+                },
+                {
+                    "name": "create_get_sold_dav",
+                    "sql": """
+                        CREATE FUNCTION get_sold_dav(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
+                        RETURNS DECIMAL(20,2)
+                        DETERMINISTIC
+                        BEGIN
+                            DECLARE pos TEXT;
+                            SET pos = find_matching_positions(type_sysdate, 'CURACCOUNT');
+                            RETURN
+                                IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
+                                IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
+                                IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
+                        END
+                    """
+                },
+                {
+                    "name": "create_tmp_rib_indexed_table",
+                    "sql": """
+                        CREATE TABLE IF NOT EXISTS tmp_rib_indexed (
+                            id VARCHAR(255),
+                            rib VARCHAR(50),
+                            rib2 VARCHAR(50),
+                            INDEX (rib)
+                        );
+                    """
+                },
+                {
+                    "name": "insert_tmp_rib_indexed",
+                    "sql": """
+                        INSERT INTO tmp_rib_indexed (id, rib, rib2)
+                        SELECT 
+                            id,
+                            SUBSTRING_INDEX(SUBSTRING_INDEX(alt_acct_id, '|', -1), '|', 1) AS rib,
+                            SUBSTRING_INDEX(SUBSTRING_INDEX(alt_acct_id, '|', -2), '|', 1) AS rib2
+                        FROM 
+                            account_mcbc_live_full
+                    """
+                },
+                {
+                    "name": "index_rib",
+                    "sql": "CREATE INDEX IF NOT EXISTS idx_tmp_rib_rib ON tmp_rib_indexed(rib)"
+                },
+                {
+                    "name": "idx_tmp_rib_rib2",
+                    "sql": "CREATE INDEX IF NOT EXISTS idx_tmp_rib_rib2 ON tmp_rib_indexed(rib2)"
+                },
+                {
+                    "name": "idx_eb_cont_bal_id_sysdate",
+                    "sql": "CREATE INDEX IF NOT EXISTS idx_eb_cont_bal_id_sysdate ON eb_cont_bal_mcbc_live_full(id)"
+                },
+                {
+                    "name": "idx_eb_chq_orderingrib",
+                    "sql": "CREATE INDEX IF NOT EXISTS idx_eb_chq_orderingrib ON eb_chq_in_rcp_dtl_mcbc_live_full(orderingrib)"
+                }
+            ]
+
+            status_report = []
+
+            cursor.execute("DELETE FROM init_status")
+            for step in steps:
+                name = step["name"] 
+
+                cursor.execute("SELECT status FROM init_status WHERE name = %s", (name,))
+                existing = cursor.fetchone()
+                if existing and existing[0] == "done":
+                    status_report.append({"name": name, "status": "skipped"})
+                    continue
+
+                try: 
+                    cursor.execute(step["sql"])
+                    cursor.execute(
+                        "REPLACE INTO init_status (name, status, message) VALUES (%s, %s, %s)",
+                        (name, "done", "OK")
+                    )
+                    status_report.append({"name": name, "status": "done"})
+                except Exception as e:
+                    cursor.execute(
+                        "REPLACE INTO init_status (name, status, message) VALUES (%s, %s, %s)",
+                        (name, "error", str(e))
+                    )
+                    status_report.append({"name": name, "status": "error", "message": str(e)})
+
+            conn.commit()
+            return status_report
+
+        except Exception as e:
+            return [{"name": "init_sql", "status": "fatal", "message": str(e)}]

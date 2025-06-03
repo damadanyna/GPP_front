@@ -1,4 +1,4 @@
-DELIMITER $$
+DELIMITER 
 
 CREATE FUNCTION find_matching_positions(type_sysdate TEXT, prefixes TEXT)
 RETURNS TEXT
@@ -41,12 +41,12 @@ BEGIN
     END WHILE;
 
     RETURN result;
-END$$
+END
 
 DELIMITER ;
 
  
-DELIMITER $$
+DELIMITER 
 
 CREATE FUNCTION sum_values_at_positions_(values_str TEXT, positions_str TEXT)
 RETURNS DECIMAL(20,2)
@@ -78,7 +78,7 @@ BEGIN
     END WHILE;
 
     RETURN total;
-END$$
+END
  
 DELIMITER ;
 
@@ -86,7 +86,7 @@ DELIMITER ;
 
  
 
-DELIMITER $$
+DELIMITER 
 
 CREATE FUNCTION get_capital_non_appele(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
 RETURNS DECIMAL(20,2)
@@ -98,7 +98,7 @@ BEGIN
         IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
         IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
         IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
-END$$
+END
 
 CREATE FUNCTION get_capital_appele(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
 RETURNS DECIMAL(20,2)
@@ -110,7 +110,7 @@ BEGIN
         IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
         IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
         IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
-END$$
+END
  
 CREATE FUNCTION get_sold_dav(type_sysdate TEXT, open_balance TEXT, credit_mvmt TEXT, debit_mvmt TEXT)
 RETURNS DECIMAL(20,2)
@@ -122,14 +122,14 @@ BEGIN
         IFNULL(sum_values_at_positions_(open_balance, pos), 0) +
         IFNULL(sum_values_at_positions_(credit_mvmt, pos), 0) +
         IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
-END$$
+END
  
  
 
 DELIMITER ;
 
 
-DELIMITER $$
+DELIMITER 
 
 CREATE FUNCTION get_capital_TOTAL(
     type_sysdate TEXT,
@@ -153,7 +153,7 @@ BEGIN
         IFNULL(sum_values_at_positions_(debit_mvmt, pos), 0);
 
     RETURN total;
-END$$
+END
 
 DELIMITER ;
 
@@ -176,7 +176,7 @@ FROM
     account_mcbc_live_full;
 
 
-DELIMITER $$
+DELIMITER 
 
  
 DELIMITER ;

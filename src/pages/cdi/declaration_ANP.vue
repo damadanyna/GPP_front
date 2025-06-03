@@ -1,6 +1,14 @@
 <!-- src/pages/home.vue or src/components/home.vue -->
 <template>
   <v-card style=" position: sticky; top: 0; z-index: 10; background-color: transparent; overflow: hidden;">
+    <div class="p_container">
+
+      <span class=" progess_label">Initalisation ...</span>
+      <div class="progress-container">
+        <div class="progress-bar" :style="{ width: progress + '%' }"></div>
+        <div class="progress-text">{{ progress }}%</div>
+      </div>
+    </div>
     <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
     <v-tabs v-model="tab" >
       <v-tab value="one">Création</v-tab>
@@ -147,7 +155,7 @@
 import api from "@/api/axios";
 import { ref } from "vue";
 import { onMounted ,watch} from "vue";
-import { getData,getAllData } from '@/api/indexDB';
+import { getData } from '@/api/indexDB';
 import { usePopupStore } from '../../stores/store'
 
 
@@ -303,6 +311,9 @@ const selectedRow = ref(null);
 const list_a_traiter_ = ref(null);
 const data_temp=ref([])
 
+const progress = ref(0)
+const initSteps = ref([])
+const isInitialised = () => localStorage.getItem('initialised') === 'true'
    // ✅ Réagit à toute modification de dialogData
 watch(dialogData, () => {
       check_key_state();
@@ -527,6 +538,9 @@ const send_selected_credit = async (data, files) => {
     console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
   }
 };
+
+
+
 const loadAllEncours = async () => {
     const step = 100;
   for (let offset = 0; offset < 10; offset += step) {
@@ -540,12 +554,6 @@ const onRowClick_atraiter_=()=>{
   dialog_a_traiter.value = true;
 
 };
-function formatDateFR(dateStr) {
-  if (!dateStr) return "";
-  const [year, month, day] = dateStr.split("-");
-  console.log(`formatDateFR called with ${dateStr} → ${day}/${month}/${year}`);
-  return `${day}/${month}/${year}`;
-}
 
 const create_gpp_ = async () => {
   try {
@@ -569,43 +577,75 @@ const create_gpp_ = async () => {
 };
 
 
-onMounted( ()=>{
+
+onMounted(async () => {
+  // if (isInitialised()) {
+  //   document.querySelector('.p_container').style.display = 'none'
+  //   return
+  // }
+
+  const labelElt = document.querySelector('.progess_label')
+  const container = document.querySelector('.p_container')
+
+  container.style.display = 'block'
+  labelElt.textContent = `Initialisation en cours...`
+
+  const steps = await callInitCompense()
+  initSteps.value = steps
+
+  const total = steps.length
+  let done = 0
+
+  for (const step of steps) {
+    if (step.status === 'done' || step.status === 'skipped') {
+      // console.log(`✔️ Étape ${step.name} (${step.status}) — ${step.message}`);
+      labelElt.textContent = `Initialisation: ${step.name}`
+
+      done++
+    }
+    else console.warn(`⚠️ Étape échouée : ${step.name} — ${step.message}`)
+    progress.value = Math.floor((done / total) * 100)
+    await new Promise(res => setTimeout(res, 300)) // pause visuelle
+  }
+
+  labelElt.textContent = `Finalisation en cours...`
+
+  // Avancer jusqu'à 100 avec un effet
+  const interval = setInterval(() => {
+    if (progress.value < 100) {
+      progress.value += 1
+    } else {
+      clearInterval(interval)
+      labelElt.textContent = `Initialisation terminée`
+      localStorage.setItem('initialised', 'true')
+      setTimeout(() => {
+        container.style.display = 'none'
+      }, 800)
+    }
+  }, 30)
+
+
+
   loadAllEncours();
-  // get_list_a_traiter()
-  // const allData = await getAllData();
-  // list_encours.value = allData;
 })
-function downloadCSVFromProxyData(proxyData, headers) {
-  const dataArray = Array.from(proxyData);
 
-  const csvHeaders = headers.map(h => h.title).join(";");
-  const csvRows = dataArray.map(row =>
-    headers.map(h => `"${(row[h.key] ?? "").toString().replace(/"/g, '""')}"`).join(";")
 
-  );
-
-  const csvContent = [csvHeaders, ...csvRows].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-
-  // 👉 Générer la date et l'heure au format voulu
-  const now = new Date();
-  const day = String(now.getDate()).padStart(2, '0');
-  const month = String(now.getMonth() + 1).padStart(2, '0'); // janvier = 0
-  const year = now.getFullYear();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-
-  const formattedDate = `${day}${month}${year}${hours}${minutes}${seconds}`;
-
-  // 👉 Utiliser cette date comme nom de fichier
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", `RGPP_${formattedDate}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+const callInitCompense = async () => {
+  try {
+    const response = await api.get('/api/init_cdi');
+    if (Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error("❌ Erreur d'initialisation :", error);
+    return [];
+  }
 }
+
+
+
 
 function downloadTXTFromProxyData(proxyData, headers) {
   const dataArray = Array.from(proxyData);
@@ -781,6 +821,61 @@ tbody{
   border: none;
   border-radius: 10px;
 
+}
+.p_container{
+  display: flex;
+  justify-content: center;
+  place-items: center;
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+}
+
+.progess_label{
+  left:30%;
+  position: absolute;
+  margin-top: -40px;
+  font-size: 22px;
+}
+
+.progress-container {
+  left: -15%;
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 20px auto;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(270deg, #46e58e, #46e58e, #017f16, #46e58e);
+  background-size: 600% 600%;
+  animation: gradientShift 2s ease-in infinite;
+  transition: width 0.3s ease-in;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  color: #111827;
+  font-size: 14px;
+  pointer-events: none;
 }
 
   </style>
