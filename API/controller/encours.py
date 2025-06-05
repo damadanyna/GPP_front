@@ -11,6 +11,7 @@ import csv
 import json
 import sys 
 import tempfile
+import shutil
 from werkzeug.utils import secure_filename
 
 class Encours:
@@ -75,11 +76,13 @@ class Encours:
         os.makedirs(folder_path, exist_ok=True)
 
         final_filepath = os.path.join(folder_path, filename)
-        temp_filepath = None
+        backup_filepath = None
         
         try:
-            # Utiliser un fichier temporaire pour l'upload
-            temp_filepath = final_filepath + '.tmp'
+            # Créer un backup si le fichier existe déjà
+            if os.path.exists(final_filepath):
+                backup_filepath = final_filepath + '.backup'
+                shutil.copy2(final_filepath, backup_filepath)
             
             chunk_size = 1024 * 1024  # 1 MB
             total_size = 0
@@ -97,22 +100,20 @@ class Encours:
                     "message": f"Impossible de déterminer la taille du fichier: {str(e)}"
                 }
 
-            # Écriture avec gestion d'erreurs
-            with open(temp_filepath, 'wb') as f:
+            # Écriture directe dans le fichier final
+            with open(final_filepath, 'wb') as f:
                 while True:
                     try:
                         chunk = file.stream.read(chunk_size)
                         if not chunk:
                             break
                         
-                        # Vérifier que l'écriture s'est bien passée
                         bytes_written = f.write(chunk)
                         if bytes_written != len(chunk):
                             raise IOError(f"Erreur d'écriture: {bytes_written} octets écrits au lieu de {len(chunk)}")
                         
-                        # Forcer l'écriture sur disque
+                        # Forcer l'écriture sur disque périodiquement
                         f.flush()
-                        os.fsync(f.fileno())
                         
                         total_size += len(chunk)
 
@@ -128,7 +129,11 @@ class Encours:
                         }
                         
                     except Exception as e:
-                        # En cas d'erreur de lecture/écriture
+                        # Restaurer le backup en cas d'erreur
+                        if backup_filepath and os.path.exists(backup_filepath):
+                            shutil.move(backup_filepath, final_filepath)
+                            backup_filepath = None
+                        
                         yield {
                             "status": "error",
                             "file": filename,
@@ -136,8 +141,17 @@ class Encours:
                         }
                         return
 
+                # Synchronisation finale
+                f.flush()
+                os.fsync(f.fileno())
+
             # Vérification de l'intégrité
             if total_expected_size > 0 and total_size != total_expected_size:
+                # Restaurer le backup
+                if backup_filepath and os.path.exists(backup_filepath):
+                    shutil.move(backup_filepath, final_filepath)
+                    backup_filepath = None
+                
                 yield {
                     "status": "error",
                     "file": filename,
@@ -145,9 +159,9 @@ class Encours:
                 }
                 return
 
-            # Renommer le fichier temporaire vers le fichier final
-            os.rename(temp_filepath, final_filepath)
-            temp_filepath = None  # Marquer comme traité
+            # Succès - supprimer le backup
+            if backup_filepath and os.path.exists(backup_filepath):
+                os.remove(backup_filepath)
 
             yield {
                 "status": "success",
@@ -157,6 +171,13 @@ class Encours:
             }
 
         except Exception as e:
+            # Restaurer le backup en cas d'erreur générale
+            if backup_filepath and os.path.exists(backup_filepath):
+                try:
+                    shutil.move(backup_filepath, final_filepath)
+                except:
+                    pass
+            
             yield {
                 "status": "error",
                 "file": filename,
@@ -164,10 +185,10 @@ class Encours:
             }
         
         finally:
-            # Nettoyer le fichier temporaire en cas d'erreur
-            if temp_filepath and os.path.exists(temp_filepath):
+            # Nettoyer le backup s'il reste
+            if backup_filepath and os.path.exists(backup_filepath):
                 try:
-                    os.remove(temp_filepath)
+                    os.remove(backup_filepath)
                 except:
                     pass
     def upload_multiple_files(self, files, app_name, folder_name=None):
