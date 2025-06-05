@@ -1,7 +1,6 @@
 <template>
-
   <div id="upload-container">
-    <popup_view v-if="usePopupStore().show_notification.status"></popup_view>
+    <popup_view v-if="usePopupStore().show_notification.status" style=" z-index: 10000;"></popup_view>
     <v-card class="upload-box" outlined>
       <v-icon size="48" class="upload-icon">mdi-cloud-upload</v-icon>
       <p class="upload-text">Glissez le fihcer ici</p>
@@ -10,7 +9,7 @@
         <v-btn variant="outlined" class="upload-btn" @click="triggerFileInput" id="file_name">  {{ file_name }}</v-btn>
         <div v-if="is_exist_file" style="display: flex; flex-direction: row; align-items: center;">
           <v-icon @click="cancel" size="24" title="Annuler" style="color: red; padding: 20px; margin-left: 10px; border-radius: 25px;">mdi-file-remove-outline</v-icon>
-          <v-icon @click="uploadFile" size="16" title="Charger le fichier" style="background: green; padding: 12px; margin-left: 10px; border-radius: 25px;"> mdi-check</v-icon>
+          <v-icon @click="open_dialoge_date" size="16" title="Charger le fichier" style="background: green; padding: 12px; margin-left: 10px; border-radius: 25px;"> mdi-check</v-icon>
         </div>
       </div>
       <ul v-if="file_names.length > 0" style="margin-top: 10px; list-style: none; padding-left: 0;">
@@ -22,29 +21,49 @@
     </v-card>
     <v-dialog max-width="500">
       <template v-slot:activator="{ props: activatorProps }">
-        <v-btn @click="showFiles" id="history"   v-bind="activatorProps"   icon=" mdi-history"   variant="flat" ></v-btn>
+        <v-btn @click="showFiles" id="history" v-bind="activatorProps" icon="mdi-history" variant="flat"></v-btn>
       </template>
+
       <template v-slot:default="{ isActive }">
-        <v-card title="Liste récente">
-          <div style=" max-height: 400px;overflow-y: auto;padding: 0px 30px; " @click=" isActive.value = false">
-            <div v-for="item,i in list_file" :key="i" @click="show_popup(item.file_name)" style=" display: flex; justify-content: start; width: 100%; padding: 0px 0px;border-bottom: 1px solid gray; font-size: 12px; ">
-              <div class=" "   >
-                <div v-if=" item.used==true" style="color: green; border: 1px solid green; padding: 2px 10px; border-radius: 10px;margin: 2px;">
-                  <span>{{resize_text( item.file_name,100) }}</span>
-                  <v-icon size="20"> mdi-check</v-icon>
-                </div>
-                <div v-else style=" padding: 2px 10px; cursor: pointer; margin: 2px;">
-                  <v-icon size="14" style="margin-right: 5px;">mdi-file</v-icon>  <span>{{resize_text( item.file_name,100) }}</span>
-                </div>
-              </div>
-            </div>
+        <v-card title="Explorateur de fichier">
+          <div style="max-height: 400px; overflow-y: auto; padding: 0 30px;">
+            <v-treeview v-if="list_file.length" v-model:opened="open" :items="list_file" density="compact" item-value="title" activatable open-on-click >
+              <template v-slot:prepend="{ item, isOpen }">
+                <v-icon v-if="!item.file" :icon="isOpen ? 'mdi-folder-open' : 'mdi-folder'" />
+                <v-icon v-else icon="mdi-file-chart-outline" style=" font-size: 15px;" />
+                <button v-if="!item.file" style="position:absolute; margin-left: 400px;" @click.stop="chargerDossier(item,isActive)" >
+                  <v-icon icon="mdi mdi-database " size="24" style=" position: relative; margin-left: -20px; margin-top: 7px; " />
+                  <v-icon :id="'refresh' + item.title.replaceAll(/[^a-zA-Z0-9_-]/g, '_')" icon="mdi mdi mdi-sync " size="12" style=" position: relative; margin-top: 20px;margin-left:-7px; background-color: black;border-radius: 15px;" />
+                </button>
+              </template>
+              <template #title="{ item }">
+                <span :class="item.file ? 'custom_title' : ''">{{ item.title }}</span>
+              </template>
+            </v-treeview>
           </div>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text="Fermer" @click="isActive.value = false" ></v-btn>
+            <v-btn text="Fermer" @click="isActive.value = false" />
           </v-card-actions>
         </v-card>
       </template>
+    </v-dialog>
+    <v-dialog v-model="isDialogActive" max-width="500">
+      <v-card title="Date du dossier" >
+        <!-- contenu du dialogue -->
+        <div style=" padding: 0px 70px;">
+          <v-text-field
+            v-model="date_dossier"
+            label="Date de traitement dans fichier"
+            type="date"
+            dense
+            :max="today"
+            @change="check_data_state" variant="outlined"/></div>
+        <v-card-actions>
+          <v-btn @click="check_file"   :disabled="!is_full" :color="is_full ? 'red' : 'gray'"  variant="flat" class="ml-2">Enregister?</v-btn>
+          <v-btn text @click="isDialogActive = false">Fermer</v-btn>
+        </v-card-actions>
+      </v-card>
     </v-dialog>
   </div>
 </template>
@@ -55,32 +74,38 @@ import api from '@/api/axios'
 import { usePopupStore } from '../../stores/store'
 import Cookies from 'js-cookie'
 
-
+import { VTreeview } from 'vuetify/labs/VTreeview'
 const file_names = ref([]);  // noms des fichiers
 const file_name = ref("Importer un fichier");
 const fileInput = ref(null)
 const files_data = ref(null)
 const is_exist_file = ref(false);
+const today = new Date().toISOString().split('T')[0]
+const isDialogActive = ref(false)
 // Fonction pour ouvrir la boîte de dialogue de sélection de fichiers
 const triggerFileInput = () => {
   fileInput.value.click()
 }
-const list_file=ref([])
+const list_file = ref([]);
+const is_full=ref(false)
+const date_dossier=ref()
 const app_type=ref( Cookies.get('app'))
+
+const open = ref([]);
+
 // Créer une variable réactive pour stocker le nom du fichier
 // Fonction pour gérer l'upload (facultatif)
 
 
-const resize_text = (text, size) => {
-  if (typeof text !== 'string' || text === null) {
-    return ''; // Si 'text' n'est pas une chaîne ou est null, on retourne une chaîne vide
-  }
 
-  if (text.length > size) {
-    return text.substring(0, size - 3) + '...';
-  }
-
-  return text;
+const normalizeTree = (data) => {
+  return data.map(item => ({
+    title: item.title,
+    children: Array.isArray(item.children) ? item.children.map(child => ({
+      title: child.title,
+      file: !!child.file
+    })) : []
+  }));
 };
 
 const handleFileUpload = (event) => {
@@ -109,6 +134,22 @@ const handleFileUpload = (event) => {
   }
 };
 
+const chargerDossier = (file,activatorProps) => {
+  activatorProps.value=false
+  const id = 'refresh' + file.title.replaceAll(/[^a-zA-Z0-9_-]/g, '_');
+  const refresh = document.getElementById(id);
+
+  if (refresh) {
+    refresh.classList.add('animIt')
+  }
+  console.log(file.children);
+  usePopupStore().cdi_list_stream=file.children
+  load_database(refresh,file.children,file.title)
+  setTimeout(() => {
+    usePopupStore().togglePopupCDI();
+  }, 300);
+
+};
 
 
 const cancel = () => {
@@ -120,16 +161,123 @@ const cancel = () => {
   document.getElementById('file_name').classList.remove('file_loaded');
 
 };
-const uploadFile = () => {
+
+const check_data_state = () => {
+  if (date_dossier.value) {
+    is_full.value = true
+  }
+}
+
+const open_dialoge_date=()=> {
+  isDialogActive.value = true
+}
+
+const load_database = async (refresh, files, folder) => {
+
+  var index_table=0;
+  try {
+    const response = await fetch('http://localhost:5000/api/create_multiple_table', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        files: files.map(f => f.title),
+        app: app_type.value,
+        folder: folder
+      })
+    });
+
+    if (!response.body) {
+      throw new Error("Pas de flux en réponse !");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    let partial = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      partial += decoder.decode(value, { stream: true });
+
+      // Découper les lignes (JSON par ligne)
+      let lines = partial.split("\n");
+      partial = lines.pop();
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            const msg = JSON.parse(line);
+            if (msg.fait) {
+              usePopupStore().precentage=0
+              usePopupStore().cdi_list_file_stream[index_table].success=true
+              index_table++
+              if (index_table==files.length) {
+                setTimeout(() => {
+                  usePopupStore().showPopupCDI = false
+                }, 200);
+              }
+
+            }
+            if(msg.filename ){
+              usePopupStore().cdi_list_file_stream.push([
+                {file_name:msg.filename},
+                {task:msg.task},
+                {row_count:msg.row_count},
+                {success:false},
+                {total:msg.total}])
+
+            }else{
+               if(msg.task){
+                usePopupStore().cdi_list_file_stream[index_table].task=msg.task
+                }
+                if(msg.row_count){
+                    usePopupStore().cdi_list_file_stream[index_table].row_count=msg.row_count
+                }
+                if(msg.total){
+                    usePopupStore().cdi_list_file_stream[index_table].total=msg.total
+                }
+                if(msg.percentage){
+                    usePopupStore().precentage=parseFloat(msg.percentage)
+                }
+                if(msg.filename){
+                  usePopupStore().cdi_list_file_stream[index_table].file_name=msg.filename
+                }
+            }
+
+          } catch (e) {
+            console.warn("Impossible de parser la ligne :", line,e);
+          }
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error("Erreur lors du chargement du fichier dans la base :", error);
+  } finally {
+    refresh.classList.remove('animIt');
+    index_table=0
+    usePopupStore().cdi_list_file_stream=[]
+  }
+};
+
+
+
+
+const check_file = () => {
+  if (date_dossier.value) {
+    uploadFile(date_dossier.value)
+    isDialogActive.value = false
+  }
+}
+const uploadFile = (folder_name) => {
   const formData = new FormData();
-
-  // Ajouter chaque fichier individuellement avec la même clé "file"
-  files_data.value.forEach((file, index) => {
-    formData.append('file', file); // ou formData.append(`file[${index}]`, file);
+  files_data.value.forEach((file) => {
+    formData.append('file', file);
   });
-
   formData.append('app', app_type.value);
-
+  formData.append('folder_name', folder_name);
   api.post('/api/upload_multiple_files', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -162,16 +310,16 @@ const showFiles = async () => {
       }
     });
     console.log(response.data.files);
-    list_file.value=response.data.files// Affichage des fichiers reçus
+    list_file.value = normalizeTree(response.data.files);// Affichage des fichiers reçus
   } catch (error) {
     console.error("Erreur lors de la récupération des fichiers:", error); // Gestion des erreurs
   }
 };
 
-const show_popup=(file_name)=>{
+const show_popup=()=>{
   usePopupStore().togglePopup()
-  console.log(usePopupStore().showPopup,file_name);
-  usePopupStore().loadFile=file_name
+  // console.log(usePopupStore().showPopup,file_name);
+  // usePopupStore().loadFile=file_name
 
 }
 
@@ -182,6 +330,10 @@ const show_popup=(file_name)=>{
 
 
 <style scoped>
+.custom_title{
+
+  font-size: 12px;
+}
 .file_loaded{
   background: green;
   color: white;
@@ -285,4 +437,19 @@ const show_popup=(file_name)=>{
 .hidden-file-input {
   display: none;
 }
+.animIt{
+ animation:   spin .5s linear infinite;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+
+
+
 </style>

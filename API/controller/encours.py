@@ -7,6 +7,10 @@ import string
 from db.db  import DB
 import pandas as pd
 import re 
+import csv
+import json
+import sys
+
 
 class Encours:
     def __init__(self):
@@ -15,37 +19,33 @@ class Encours:
         self.db = DB() 
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
-    # def upload_file(self, file, app_name):
-    #     """
-    #     Cette méthode permet de télécharger un fichier et de l'enregistrer dans le dossier 'load_file/app'
-    #     si un 'app' est fourni, sinon dans 'load_file'.
-    #     """
-    #     if file and self.allowed_file(file.filename):
-    #         filename = secure_filename(file.filename)
-
-    #         # Détermine le chemin du dossier où enregistrer le fichier, selon l'app (ou le dossier par défaut)
-    #         folder_path = os.path.join(self.upload_folder, app_name) if app_name else self.upload_folder
-
-    #         # Créer le dossier s'il n'existe pas
-    #         os.makedirs(folder_path, exist_ok=True)
-
-    #         filepath = os.path.join(folder_path, filename)
-    #         file.save(filepath)
-
-    #         return {'message': 'File successfully uploaded', 'filename': filename}
-        
-    #     return {'error': 'Invalid file format'}
-    
-    def upload_file(self, file, app_name): 
-        if file and self.allowed_file(file.filename): 
-            filename = secure_filename(file.filename)
-            folder_path = os.path.join(self.upload_folder, app_name) if app_name else self.upload_folder
-            os.makedirs(folder_path, exist_ok=True)
-            filepath = os.path.join(folder_path, filename)  
-            file.save(filepath)
-            return {'message': 'File successfully uploaded', 'filename': filename, 'path': filepath}
  
+    
+    def upload_file(self, file, app_name, folder_name=None):
+        if file and self.allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            
+            # Construction du chemin dossier
+            if folder_name:
+                folder = os.path.join(app_name, folder_name) if app_name else folder_name
+            else:
+                folder = app_name
+            
+            folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
+            os.makedirs(folder_path, exist_ok=True)
+
+            filepath = os.path.join(folder_path, filename)
+            file.save(filepath)
+
+            return {
+                'message': 'File successfully uploaded',
+                'filename': filename,
+                'path': filepath
+            }
+
         return {'error': 'Invalid file format'}
+
+
     
     def allowed_file(self, filename):
         """
@@ -58,12 +58,13 @@ class Encours:
             return ext in ALLOWED_EXTENSIONS
         return False
 
-    def upload_multiple_files(self, files, app_name):
+    def upload_multiple_files(self, files, app_name, folder_name=None):
         results = []
         for file in files:
-            result = self.upload_file(file, app_name) 
+            result = self.upload_file(file, app_name, folder_name)
             results.append(result)
         return results
+
 
 
     def show_files(self, app=None): 
@@ -89,28 +90,52 @@ class Encours:
         
         return files
  
-    def show_CDI_files(self, app=None): 
+    def show_CDI_files(self, app=None):
         """
-        Récupère la liste des fichiers xlsx dans le sous-dossier 'load_file/app'
-        et les retourne sous forme d'objets : {"used": False, "file_name": "nom.xlsx"}
+        Renvoie une structure arborescente des sous-dossiers de `upload_folder/app`
+        compatible avec Vuetify <v-treeview>, sans inclure le dossier racine.
         """
-        files = []
-        
-        # Construction du chemin vers le sous-dossier, en utilisant 'app' s'il est fourni
-        folder_path = os.path.join(self.upload_folder, app) if app else self.upload_folder
+        import os
 
-        # Vérifie que le dossier existe
-        if not os.path.exists(folder_path):
-            return []  # Ou éventuellement retourner une erreur personnalisée
+        base_folder = os.path.join(self.upload_folder, app) if app else self.upload_folder
 
-        for filename in os.listdir(folder_path):
-            if filename.endswith('.csv') or filename.endswith('.CSV'):
-                files.append({
-                    "used": False,
-                    "file_name": filename
-                })
-        
-        return files
+        if not os.path.exists(base_folder):
+            return []
+
+        tree = []
+
+        for root, dirs, files in os.walk(base_folder):
+            # On saute la racine : on ne veut afficher que les sous-dossiers
+            if root == base_folder:
+                continue
+
+            relative_path = os.path.relpath(root, base_folder).replace("\\", "/")
+            path_parts = relative_path.split('/') if relative_path != '.' else []
+
+            # Liste des fichiers CSV
+            csv_files = [
+                {"title": f, "file": True}
+                for f in files
+                if f.lower().endswith('.csv')
+            ]
+
+            if not csv_files:
+                continue  # On ignore les dossiers sans fichiers CSV
+
+            # Construction arborescente
+            current_level = tree
+            for part in path_parts:
+                folder = next((item for item in current_level if item["title"] == part and not item.get("file")), None)
+                if not folder:
+                    folder = {"title": part, "children": []}
+                    current_level.append(folder)
+                current_level = folder["children"]
+
+            current_level.extend(csv_files)
+
+        return tree
+
+
  
     
     def get_all_dfe_database(self, offset,limit):
@@ -453,8 +478,313 @@ class Encours:
             import traceback
             print(f"[DEBUG] Traceback complet : {traceback.format_exc()}")
             return {'error': error_msg}
+    
+    
+    
+    # def load_file_csv_in_database(self, filename: str, app_name: str,folder:str):
+         
+    #         folder_path = os.path.join(project_root, 'load_file', app_name,folder)
         
+    def load_file_csv_in_database(self, filename: str, app_name: str, folder: str):
+        """
+        Charge un fichier CSV depuis './load_file/{filename}' avec séparateur '^' 
+        et insère les données dans la base avec progression en temps réel.
+        """
         
+        def progress_generator():
+            table_name = self.nettoyer_nom_fichier(filename)  
+            try:
+                project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+                folder_path = os.path.join(project_root, 'load_file', app_name, folder)
+                
+                # Recherche du fichier dans le répertoire
+                if not os.path.exists(folder_path):
+                    yield json.dumps({"status": "error", "message": f"[ERREUR] Le répertoire {folder_path} n'existe pas",
+                        "task": "Le répertoire {folder_path} n'existe pas"})
+                    return  
+                
+                # Liste tous les fichiers du répertoire
+                files_in_dir = os.listdir(folder_path)
+                yield json.dumps({"status": "info", "message": f"[INFO] Fichiers disponibles dans le répertoire : {files_in_dir}"})
+                
+                # Recherche du fichier (exact ou partiel)
+                found_file = None
+                for file in files_in_dir:
+                    if file == filename or file.startswith(filename.split('.')[0]):
+                        found_file = file
+                        break
+                
+                if not found_file:
+                    yield json.dumps({"status": "error", "message": f"[ERREUR] Fichier {filename} introuvable dans {folder_path}",
+                                      "task": " Fichier {filename} introuvable dans"})
+                    return  
+                
+                filepath = os.path.join(folder_path, found_file)
+                yield json.dumps({"status": "info", "message": f"[INFO] Fichier trouvé : {found_file}"})
+                yield json.dumps({"status": "info", "message": f"[INFO] Chemin complet du fichier : {filepath}"})
+                
+                # Lecture du fichier CSV avec séparateur '^'
+                try:
+                    data = []
+                    yield json.dumps({"status": "info", "message": "[INFO] Début de la lecture du fichier CSV..."
+                                      ,  "task": "Début de la lecture du fichier CSV."})
+                    
+                    with open(filepath, 'r', encoding='utf-8', newline='') as csvfile:
+                        # Utilisation du séparateur '^'
+                        csv_reader = csv.reader(csvfile, delimiter='^')
+                        is_header = True
+                        row_count = 0
+                        
+                        for row in csv_reader:
+                            if is_header:
+                                # Traitement spécial pour l'en-tête (première ligne)
+                                cleaned_row = []
+                                for i, cell in enumerate(row):
+                                    # Nettoyage, remplacement des points par underscores et mise en minuscules
+                                    cleaned_cell = cell.strip().replace('.', '_').lower()
+                                    
+                                    # Si la cellule est vide après nettoyage, créer un nom par défaut
+                                    if not cleaned_cell or cleaned_cell == '':
+                                        cleaned_cell = f'colonne_{i+1}'
+                                    
+                                    # Vérifier que le nom ne contient que des caractères valides
+                                    # Remplacer les caractères spéciaux par des underscores
+                                    cleaned_cell = ''.join(c if c.isalnum() or c == '_' else '_' for c in cleaned_cell)
+                                    
+                                    # S'assurer que le nom ne commence pas par un chiffre
+                                    if cleaned_cell and cleaned_cell[0].isdigit():
+                                        cleaned_cell = f'col_{cleaned_cell}'
+                                    
+                                    cleaned_row.append(cleaned_cell)
+                                is_header = False
+                            else:
+                                # Nettoyage standard pour les données
+                                cleaned_row = [cell.strip() for cell in row]
+                                row_count += 1
+                                
+                                # Progression de lecture toutes les 1000 lignes
+                                if row_count % 1000 == 0:
+                                    yield json.dumps({
+                                        "status": "reading", 
+                                        # "progress": row_count, 
+                                        "task": "Lecture encours",
+                                        "row_count":row_count
+                                    })
+                                    yield json.dumps({
+                                        "status": "info", 
+                                        "message": f"[INFO] Lecture en cours. Ligne : {row_count}"
+                                    })
+                            
+                            data.append(cleaned_row)
+                    
+                    if data:
+                        yield json.dumps({
+                            "status": "info", 
+                            "message": f"[INFO] Lecture réussie. Nombre de lignes : {len(data)}"
+                        })
+                        yield json.dumps({
+                            "status": "info", 
+                            "message": f"[INFO] Entêtes détectées : {data[0] if data else 'Aucune'}"
+                        })
+                    else:
+                        yield json.dumps({"status": "error", "message": "[ERREUR] Le fichier a été lu mais ne contient pas de données"})
+                        return {"status": "error", "message": "[ERREUR] Le fichier a été lu mais ne contient pas de données"}
+                        
+                except Exception as read_error:
+                    yield json.dumps({
+                        "status": "error", 
+                        "message": f"[ERREUR] Lecture du fichier CSV échouée : {str(read_error)}"
+                    })
+                    return {
+                        "status": "error", 
+                        "message": f"[ERREUR] Lecture du fichier CSV échouée : {str(read_error)}"
+                    }
+                
+                # Connexion à la base de données
+                try:
+                    yield json.dumps({"status": "info", "message": "[INFO] Tentative de connexion à la base de données"})
+                    conn = self.db.connect()
+                    yield json.dumps({"status": "info", "message": "[INFO] Connexion à la base de données établie"})
+                    cursor = conn.cursor()
+                    yield json.dumps({"status": "info", "message": "[INFO] Curseur créé avec succès"})
+                except Exception as db_error:
+                    yield json.dumps({
+                        "status": "error", 
+                        "message": f"[ERREUR] Échec de connexion à la base de données : {str(db_error)}"
+                    })
+                    return {
+                        "status": "error", 
+                        "message": f"[ERREUR] Échec de connexion à la base de données : {str(db_error)}"
+                    }
+
+                try:
+                    headers = data[0]
+                    
+                    # Vérification supplémentaire des en-têtes
+                    yield json.dumps({
+                        "status": "debug", 
+                        "message": f"[DEBUG] En-têtes avant traitement : {headers}"
+                    })
+                    
+                    # Vérifier qu'aucun en-tête n'est vide
+                    for i, header in enumerate(headers):
+                        if not header or header.strip() == '':
+                            headers[i] = f'colonne_{i+1}'
+                            yield json.dumps({
+                                "status": "warning", 
+                                "message": f"[WARNING] En-tête vide détecté à la position {i}, remplacé par 'colonne_{i+1}'"
+                            })
+                    
+                    # Vérifier les doublons dans les en-têtes
+                    seen_headers = {}
+                    for i, header in enumerate(headers):
+                        if header in seen_headers:
+                            counter = 1
+                            original_header = header
+                            while f"{original_header}_{counter}" in seen_headers:
+                                counter += 1
+                            headers[i] = f"{original_header}_{counter}"
+                            yield json.dumps({
+                                "status": "warning", 
+                                "message": f"[WARNING] En-tête dupliqué '{original_header}' renommé en '{headers[i]}'"
+                            })
+                        seen_headers[headers[i]] = i
+                    
+                    yield json.dumps({
+                        "status": "debug", 
+                        "message": f"[DEBUG] En-têtes après nettoyage : {headers}" ,
+                        "task": "En-têtes après nettoyage"
+                    })
+                    
+                    # Vidage de la table
+                    yield json.dumps({"status": "info", "message": f"[INFO] Suppression de la table existante {table_name}...","task":"Suppression de la table existante" })
+                    drop_data_in_table = f'DROP TABLE IF EXISTS `{table_name}`;'
+                    cursor.execute(drop_data_in_table)
+
+                    # === APPLICATION JUSTE AVANT LA CRÉATION DE LA TABLE ===
+                    yield json.dumps({"status": "info", "message": "[INFO] Traitement des colonnes dupliquées..."})
+                    headers, data_rows = self.merge_duplicate_columns(headers, data[1:])
+                    
+                    # Création de la table avec les colonnes nettoyées
+                    columns = ', '.join([f'`{col}` TEXT' for col in headers])
+                    yield json.dumps({
+                        "status": "info", 
+                        "message": f"[INFO] Colonnes de la table : {len(headers)} colonnes"
+                    })
+                    
+                    create_query = f'CREATE TABLE IF NOT EXISTS `{table_name}` ({columns});'
+                    cursor.execute(create_query)
+                    yield json.dumps({"status": "info", "message": f"[INFO] Table `{table_name}` créée avec succès"})
+                
+                    # Insertion des données avec progression INSTANTANÉE
+                    total_rows = len(data_rows)
+                    yield json.dumps({
+                        "status": "start_insert", 
+                        "task": "Debut de l'insertion",
+                        "total_rows": total_rows,
+                        "message": f"[INFO] Début de l'insertion de {total_rows} lignes..."
+                    })
+                    
+                    for i, row in enumerate(data_rows, 1):
+                        try:
+                            # S'assurer que la ligne a le bon nombre de colonnes
+                            while len(row) < len(headers):
+                                row.append('')  # Ajouter des valeurs vides si nécessaire
+                            
+                            # Tronquer si trop de colonnes
+                            if len(row) > len(headers):
+                                row = row[:len(headers)]
+                            
+                            placeholders = ', '.join(['%s'] * len(headers))
+                            insert_query = f'INSERT INTO `{table_name}` VALUES ({placeholders})'
+                            
+                            # PROGRESSION INSTANTANÉE toutes les 100 lignes
+                            if i % 100 == 0 or i == 1:
+                                progress_data = {
+                                    "status": "inserting",
+                                    "current": i,
+                                    "total": total_rows,
+                                    "percentage": round((i / total_rows) * 100, 2),
+                                    "row_count":i,
+                                    "task": "insertion",
+                                    "message": f"[INFO] Insertion de la ligne {i}/{total_rows}",
+                                    "debug": f"[DEBUG] Longueur de l'entête: {len(headers)}, Longueur de la ligne: {len(row)}"
+                                }
+                                yield json.dumps(progress_data)
+                                
+                                # CRUCIAL: Forcer l'envoi immédiat
+                                sys.stdout.flush()
+                            
+                            cursor.execute(insert_query, row)
+                            
+                        except Exception as insert_error:
+                            yield json.dumps({
+                                "status": "error",
+                                "message": f"[ERREUR] Échec à l'insertion de la ligne {i} : {str(insert_error)}",
+                                "row_content": str(row[:5])  # Premiers éléments pour debug
+                            })
+                            conn.rollback()  # Annulation des modifications
+                            return 
+                     
+                            
+
+                    # Validation des modifications
+                    yield json.dumps({"status": "info", "message": "[INFO] Validation des modifications (commit)..."})
+                    conn.commit()
+                    
+                    # Message final de succès
+                    final_message = {
+                        "status": "success",
+                        "total_inserted": total_rows,
+                        "table_name": table_name,
+                        "message": f"[SUCCESS] {total_rows} lignes insérées avec succès dans la table `{table_name}`"
+                    }
+                    yield json.dumps(final_message)
+
+                except Exception as e:
+                    yield json.dumps({
+                        "status": "error",
+                        "message": f"[ERREUR] Exception non gérée : {str(e)}"
+                    })
+                    
+                    # Tentative de rollback en cas d'erreur
+                    try:
+                        conn.rollback()
+                        yield json.dumps({"status": "info", "message": "[INFO] Rollback effectué"})
+                    except Exception as rollback_error:
+                        yield json.dumps({
+                            "status": "error", 
+                            "message": f"[ERREUR] Échec du rollback : {str(rollback_error)}"
+                        })
+
+                finally:
+                    # Fermeture de la connexion
+                    try:
+                        if 'conn' in locals() and conn:
+                            conn.close()
+                            yield json.dumps({"status": "info", "message": "[INFO] Connexion à la base de données fermée"})
+                    except Exception as close_error:
+                        yield json.dumps({
+                            "status": "error", 
+                            "message": f"[ERREUR] Problème lors de la fermeture de la connexion : {str(close_error)}"
+                        })
+            
+            except Exception as global_error:
+                # Capture les erreurs générales non gérées
+                yield json.dumps({
+                    "status": "critical_error",
+                    "message": f"[ERREUR CRITIQUE] Exception non gérée dans la fonction principale : {str(global_error)}"
+                })
+                return {
+                    "status": "critical_error",
+                    "message": f"[ERREUR CRITIQUE] Exception non gérée dans la fonction principale : {str(global_error)}"
+                }
+            yield json.dumps({
+                "fait": "true",
+                "message": "insertion fait"
+            })
+        return progress_generator()
+
     def clean_filename(filename):
     # Enlever l'extension
         name = os.path.splitext(filename)[0]
@@ -1048,3 +1378,4 @@ class Encours:
 
         except Exception as e:
             return [{"name": "init_sql", "status": "fatal", "message": str(e)}]
+    

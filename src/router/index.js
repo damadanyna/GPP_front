@@ -10,7 +10,7 @@ const router = createRouter({
 })
 
 // 🔐 Liste des routes protégées
-const protectedRoutes = ['/dashboard', '/profil', '/dec_credit'] // ajoute ce que tu veux
+const protectedRoutes = ['./dashboard', './profil', './dec_credit'] // ajoute ce que tu veux
 
 router.beforeEach((to, from, next) => {
   const token = Cookies.get('auth_token')

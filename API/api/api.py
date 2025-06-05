@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify,send_file
+from flask import Blueprint, request, jsonify,send_file,stream_with_context,Response
 from controller.encours import Encours
 from controller.compensation import Compensation
 from flask_cors import CORS  # Importer CORS
@@ -47,10 +47,11 @@ def upload_multiple_files():
     if 'file' not in request.files:
         return jsonify({'error': 'Aucun fichier trouvé'}), 400
 
-    files = request.files.getlist('file')  # Liste de fichiers
+    files = request.files.getlist('file')
     app_name = request.form.get('app')
+    folder_name = request.form.get('folder_name')  # <- récupère folder_name
 
-    result = encours.upload_multiple_files(files, app_name)
+    result = encours.upload_multiple_files(files, app_name, folder_name)  # <- passe folder_name
 
     return jsonify(result), 200
 
@@ -73,6 +74,44 @@ def create_table():
     result = encours.load_file_in_database(filename, app_name)
     return jsonify(result), 200 if 'message' in result else 400
 
+
+@api_bp.route('/create_multiple_table', methods=['POST'])
+def create_multiple_table():
+    """
+    Route pour générer plusieurs tables à partir d'une liste de fichiers CSV,
+    dans un sous-dossier spécifique à une application donnée.
+    La réponse est streamée en temps réel.
+    """
+    data = request.get_json()
+
+    if not data or 'files' not in data or 'app' not in data or 'folder' not in data:
+        return jsonify({'error': 'Paramètres manquants : files, app et folder requis'}), 400
+
+    filenames = data['files']
+    app_name = data['app']
+    folder = data['folder']
+
+    if not isinstance(filenames, list) or not filenames:
+        return jsonify({'error': 'files doit être une liste non vide'}), 400
+
+    def generate_all():
+        for filename in filenames:
+            yield json.dumps({"status": "start", "message": f"[INFO] Début du traitement du fichier : {filename}", "filename": filename}) + "\n"
+            try:
+                generator = encours.load_file_csv_in_database(filename, app_name, folder)
+                if generator is None:
+                    yield json.dumps({
+                        "status": "critical_error",
+                        "message": f"[ERREUR] Aucun message retourné pour {filename} (retour = None)"
+                    }) + "\n"
+                    continue
+                for message in generator:
+                    yield message + "\n"
+            except Exception as e:
+                yield json.dumps({"status": "critical_error", "message": f"[ERREUR] Problème lors du traitement de {filename} : {str(e)}"}) + "\n"
+            yield json.dumps({"status": "end", "message": f"[INFO] Fin du traitement du fichier : {filename}"}) + "\n"
+
+    return Response(stream_with_context(generate_all()), mimetype='application/json')
 
 @api_bp.route('/show_files', methods=['GET']) 
 def show_files():

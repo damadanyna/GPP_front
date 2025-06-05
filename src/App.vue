@@ -1,6 +1,6 @@
 <template>
 <v-app >
-
+    <popup_view v-if="usePopupStore().showPopupCDI"></popup_view>
     <notification v-if="popupStore.showPopup" id="not_content"></notification>
     <v-navigation-drawer  v-if="token && app" v-model="drawer" :rail="rail" permanent @click="rail = false" style=" z-index: 1">
         <v-list-item prepend-avatar="./assets/logo.png" title="SIPEM App"  nav>
@@ -28,6 +28,7 @@
 
 <script setup>
 import { useTheme } from 'vuetify'
+import popup_view from './components/cdi/popup_view.vue';
 
 const theme = useTheme()
 const toggleTheme = () => {
