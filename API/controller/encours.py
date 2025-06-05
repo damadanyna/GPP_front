@@ -9,21 +9,16 @@ import pandas as pd
 import re 
 import csv
 import json
-import sys 
-import tempfile
-import shutil
-from werkzeug.utils import secure_filename
- 
+import sys
+
 
 class Encours:
     def __init__(self):
         # Dossier où les fichiers seront enregistrés
         self.upload_folder = 'load_file'
         self.db = DB() 
-        
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
-        
  
     
     def upload_file(self, file, app_name, folder_name=None):
@@ -62,199 +57,13 @@ class Encours:
             print("Extension détectée:", ext)
             return ext in ALLOWED_EXTENSIONS
         return False
- 
-        
-    def upload_file_manual_in_detail(self, file, app_name, folder_name=None, current=None, total=None):
-        if not file or not self.allowed_file(file.filename):
-            yield {"status": "error", "file": str(file), "message": "Format invalide"}
-            return
 
-        filename = secure_filename(file.filename)
-        
-        # Construire le chemin de destination
-        if folder_name:
-            folder = os.path.join(app_name, folder_name) if app_name else folder_name
-        else:
-            folder = app_name
-        folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
-        os.makedirs(folder_path, exist_ok=True)
-
-        final_filepath = os.path.join(folder_path, filename)
-        backup_filepath = None
-        file_handle = None
-        
-        try:
-            # Créer un backup si le fichier existe déjà
-            if os.path.exists(final_filepath):
-                backup_filepath = final_filepath + '.backup'
-                shutil.copy2(final_filepath, backup_filepath)
-            
-            chunk_size = 1024 * 1024  # 1 MB
-            total_size = 0
-            chunks_written = 0
-
-            # Récupérer la taille attendue du fichier
-            total_expected_size = 0
-            try:
-                file.stream.seek(0, 2)
-                total_expected_size = file.stream.tell()
-                file.stream.seek(0)
-            except Exception as e:
-                yield {
-                    "status": "warning", 
-                    "file": filename,
-                    "message": f"Impossible de déterminer la taille du fichier: {str(e)}"
-                }
-
-            # Ouvrir le fichier une seule fois
-            file_handle = open(final_filepath, 'wb')
-            
-            while True:
-                try:
-                    # Lire le chunk avec timeout
-                    chunk = file.stream.read(chunk_size)
-                    if not chunk:
-                        break
-                    
-                    # Écrire le chunk
-                    bytes_written = file_handle.write(chunk)
-                    if bytes_written != len(chunk):
-                        raise IOError(f"Erreur d'écriture: {bytes_written} octets écrits au lieu de {len(chunk)}")
-                    
-                    total_size += len(chunk)
-                    chunks_written += 1
-                    
-                    # *** POINT CLÉ: FORCER LA SYNCHRONISATION AVANT LE YIELD ***
-                    file_handle.flush()  # Vider le buffer Python
-                    os.fsync(file_handle.fileno())  # Forcer l'écriture sur disque
-                    
-                    # OPTIONNEL: Vérifier que les données sont bien écrites
-                    current_file_size = os.path.getsize(final_filepath)
-                    if current_file_size != total_size:
-                        raise IOError(f"Synchronisation échouée: {current_file_size} sur disque vs {total_size} attendu")
-
-                    # Maintenant on peut yield en sécurité
-                    yield {
-                        "status": "progress",
-                        "file": filename,
-                        "current": current,
-                        "total": total,
-                        "received_mb": round(total_size / (1024 * 1024), 2),
-                        "total_mb": round(total_expected_size / (1024 * 1024), 2) if total_expected_size else None,
-                        "percentage_file": round((total_size / total_expected_size) * 100, 2) if total_expected_size else None,
-                        "message": f"[Serveur] {total_size / (1024 * 1024):.2f} MB synchronisés sur disque",
-                        "chunks_synced": chunks_written,
-                        "disk_size": round(current_file_size / (1024 * 1024), 2)
-                    }
-                        
-                except Exception as e:
-                    # Fermer et nettoyer en cas d'erreur
-                    if file_handle:
-                        file_handle.close()
-                        file_handle = None
-                    
-                    # Restaurer le backup
-                    if backup_filepath and os.path.exists(backup_filepath):
-                        shutil.move(backup_filepath, final_filepath)
-                        backup_filepath = None
-                    
-                    yield {
-                        "status": "error",
-                        "file": filename,
-                        "message": f"Erreur durant le transfert: {str(e)}"
-                    }
-                    return
-
-            # Fermer le fichier
-            if file_handle:
-                file_handle.flush()
-                os.fsync(file_handle.fileno())
-                file_handle.close()
-                file_handle = None
-
-            # Vérification finale de l'intégrité
-            final_disk_size = os.path.getsize(final_filepath)
-            
-            if total_expected_size > 0 and total_size != total_expected_size:
-                # Restaurer le backup
-                if backup_filepath and os.path.exists(backup_filepath):
-                    shutil.move(backup_filepath, final_filepath)
-                    backup_filepath = None
-                
-                yield {
-                    "status": "error",
-                    "file": filename,
-                    "message": f"Transfert incomplet: {total_size} octets reçus au lieu de {total_expected_size}"
-                }
-                return
-                
-            if final_disk_size != total_size:
-                yield {
-                    "status": "error",
-                    "file": filename,
-                    "message": f"Erreur de synchronisation finale: {final_disk_size} sur disque vs {total_size} transférés"
-                }
-                return
-
-            # Succès - supprimer le backup
-            if backup_filepath and os.path.exists(backup_filepath):
-                os.remove(backup_filepath)
-
-            yield {
-                "status": "success",
-                "file": filename,
-                "received_mb": round(total_size / (1024 * 1024), 2),
-                "disk_mb": round(final_disk_size / (1024 * 1024), 2),
-                "chunks_total": chunks_written,
-                "message": f"✅ Fichier {filename} synchronisé avec succès ({final_disk_size / (1024 * 1024):.2f} MB sur disque)"
-            }
-
-        except Exception as e:
-            # Nettoyer en cas d'erreur générale
-            if file_handle:
-                try:
-                    file_handle.close()
-                except:
-                    pass
-            
-            # Restaurer le backup
-            if backup_filepath and os.path.exists(backup_filepath):
-                try:
-                    shutil.move(backup_filepath, final_filepath)
-                except:
-                    pass
-            
-            yield {
-                "status": "error",
-                "file": filename,
-                "message": f"Erreur lors de l'upload: {str(e)}"
-            }
-        
-        finally:
-            # Nettoyer le backup s'il reste
-            if backup_filepath and os.path.exists(backup_filepath):
-                try:
-                    os.remove(backup_filepath)
-                except:
-                    pass
- 
     def upload_multiple_files(self, files, app_name, folder_name=None):
-        total = len(files)
-        for i, file in enumerate(files, 1):
-            try:
-                # Itérer sur le générateur et yield chaque dictionnaire produit
-                for progress in self.upload_file_manual_in_detail(file, app_name, folder_name, i, total):
-                    yield progress
-            except Exception as e:
-                yield {
-                    "status": "error",
-                    "file": file.filename if hasattr(file, "filename") else str(file),
-                    "current": i,
-                    "total": total,
-                    "percentage": round((i / total) * 100, 2),
-                    "message": f"[ERREUR] Échec du téléchargement de {file} : {str(e)}"
-                }
-
+        results = []
+        for file in files:
+            result = self.upload_file(file, app_name, folder_name)
+            results.append(result)
+        return results
 
 
 
@@ -971,9 +780,9 @@ class Encours:
                     "message": f"[ERREUR CRITIQUE] Exception non gérée dans la fonction principale : {str(global_error)}"
                 }
             yield json.dumps({
-                "fait": "true",
-                "message": "insertion fait"
-            })
+            "fait": "true",
+            "message": "insertion fait"
+        })
         return progress_generator()
 
     def clean_filename(filename):
