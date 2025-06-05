@@ -196,7 +196,7 @@ const load_database = async (refresh, files, folder) => {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
-
+    usePopupStore().precentage=0
     let partial = "";
     while (true) {
       const { done, value } = await reader.read();
@@ -264,9 +264,6 @@ const load_database = async (refresh, files, folder) => {
   }
 };
 
-
-
-
 const check_file = () => {
   if (date_dossier.value) {
     uploadFile(date_dossier.value)
@@ -282,7 +279,6 @@ const uploadFile = async (folder_name) => {
   });
   formData.append('app', app_type.value);
   formData.append('folder_name', folder_name);
-
   try {
     const response = await fetch('http://localhost:5000/api/upload_multiple_files', {
       method: 'POST',

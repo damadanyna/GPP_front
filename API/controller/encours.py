@@ -9,16 +9,21 @@ import pandas as pd
 import re 
 import csv
 import json
-import sys
-
-
+import sys 
+import tempfile
+import shutil
+from werkzeug.utils import secure_filename
+ 
+ 
 class Encours:
     def __init__(self):
         # Dossier où les fichiers seront enregistrés
         self.upload_folder = 'load_file'
         self.db = DB() 
+        
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
+        
  
     
     def upload_file(self, file, app_name, folder_name=None):
@@ -57,15 +62,156 @@ class Encours:
             print("Extension détectée:", ext)
             return ext in ALLOWED_EXTENSIONS
         return False
+ 
+    
+    def upload_file_manual_in_detail(self, file, app_name, folder_name=None, current=None, total=None):
+        if not file or not self.allowed_file(file.filename):
+            yield {"status": "error", "file": str(file), "message": "Format invalide"}
+            return
 
+        filename = secure_filename(file.filename)
+        
+        # Construire le chemin de destination
+        if folder_name:
+            folder = os.path.join(app_name, folder_name) if app_name else folder_name
+        else:
+            folder = app_name
+        folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
+        os.makedirs(folder_path, exist_ok=True)
+
+        final_filepath = os.path.join(folder_path, filename)
+        backup_filepath = None
+        
+        try:
+            # Créer un backup si le fichier existe déjà
+            if os.path.exists(final_filepath):
+                backup_filepath = final_filepath + '.backup'
+                shutil.copy2(final_filepath, backup_filepath)
+            
+            chunk_size = 1024 * 1024  # 1 MB
+            total_size = 0
+
+            # Récupérer la taille attendue du fichier
+            total_expected_size = 0
+            try:
+                file.stream.seek(0, 2)
+                total_expected_size = file.stream.tell()
+                file.stream.seek(0)
+            except Exception as e:
+                yield {
+                    "status": "warning", 
+                    "file": filename,
+                    "message": f"Impossible de déterminer la taille du fichier: {str(e)}"
+                }
+
+            # Écriture directe dans le fichier final
+            with open(final_filepath, 'wb') as f:
+                while True:
+                    try:
+                        chunk = file.stream.read(chunk_size)
+                        if not chunk:
+                            break
+                        
+                        bytes_written = f.write(chunk)
+                        if bytes_written != len(chunk):
+                            raise IOError(f"Erreur d'écriture: {bytes_written} octets écrits au lieu de {len(chunk)}")
+                        
+                        # Forcer l'écriture sur disque périodiquement
+                        f.flush()
+                        
+                        total_size += len(chunk)
+
+                        yield {
+                            "status": "progress",
+                            "file": filename,
+                            "current": current,
+                            "total": total,
+                            "received_mb": round(total_size / (1024 * 1024), 2),
+                            "total_mb": round(total_expected_size / (1024 * 1024), 2) if total_expected_size else None,
+                            "percentage_file": round((total_size / total_expected_size) * 100, 2) if total_expected_size else None,
+                            "message": f"[Serveur] Reçu {total_size / (1024 * 1024):.2f} MB..."
+                        }
+                        
+                    except Exception as e:
+                        # Restaurer le backup en cas d'erreur
+                        if backup_filepath and os.path.exists(backup_filepath):
+                            shutil.move(backup_filepath, final_filepath)
+                            backup_filepath = None
+                        
+                        yield {
+                            "status": "error",
+                            "file": filename,
+                            "message": f"Erreur durant le transfert: {str(e)}"
+                        }
+                        return
+
+                # Synchronisation finale
+                f.flush()
+                os.fsync(f.fileno())
+
+            # Vérification de l'intégrité
+            if total_expected_size > 0 and total_size != total_expected_size:
+                # Restaurer le backup
+                if backup_filepath and os.path.exists(backup_filepath):
+                    shutil.move(backup_filepath, final_filepath)
+                    backup_filepath = None
+                
+                yield {
+                    "status": "error",
+                    "file": filename,
+                    "message": f"Transfert incomplet: {total_size} octets reçus au lieu de {total_expected_size}"
+                }
+                return
+
+            # Succès - supprimer le backup
+            if backup_filepath and os.path.exists(backup_filepath):
+                os.remove(backup_filepath)
+
+            yield {
+                "status": "success",
+                "file": filename,
+                "received_mb": round(total_size / (1024 * 1024), 2),
+                "message": f"✅ Fichier {filename} transféré avec succès ({total_size / (1024 * 1024):.2f} MB)"
+            }
+
+        except Exception as e:
+            # Restaurer le backup en cas d'erreur générale
+            if backup_filepath and os.path.exists(backup_filepath):
+                try:
+                    shutil.move(backup_filepath, final_filepath)
+                except:
+                    pass
+            
+            yield {
+                "status": "error",
+                "file": filename,
+                "message": f"Erreur lors de l'upload: {str(e)}"
+            }
+        
+        finally:
+            # Nettoyer le backup s'il reste
+            if backup_filepath and os.path.exists(backup_filepath):
+                try:
+                    os.remove(backup_filepath)
+                except:
+                    pass
+ 
     def upload_multiple_files(self, files, app_name, folder_name=None):
-        results = []
-        for file in files:
-            result = self.upload_file(file, app_name, folder_name)
-            results.append(result)
-        return results
-
-
+        total = len(files)
+        for i, file in enumerate(files, 1):
+            try:
+                # Itérer sur le générateur et yield chaque dictionnaire produit
+                for progress in self.upload_file_manual_in_detail(file, app_name, folder_name, i, total):
+                    yield progress
+            except Exception as e:
+                yield {
+                    "status": "error",
+                    "file": file.filename if hasattr(file, "filename") else str(file),
+                    "current": i,
+                    "total": total,
+                    "percentage": round((i / total) * 100, 2),
+                    "message": f"[ERREUR] Échec du téléchargement de {file} : {str(e)}"
+                }
 
     def show_files(self, app=None): 
         """
@@ -135,9 +281,6 @@ class Encours:
 
         return tree
 
-
- 
-    
     def get_all_dfe_database(self, offset,limit):
         try: 
             conn = self.db.connect()
@@ -157,7 +300,6 @@ class Encours:
             print("Erreur", global_e)
             return {'error': error_msg} 
         
-
     def get_all_cdi_database(self, offset,limit):
         try: 
             conn = self.db.connect()
@@ -235,8 +377,7 @@ class Encours:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
-        
- 
+    
     def get_liste_faites(self):
         try: 
             conn = self.db.connect()
@@ -251,10 +392,7 @@ class Encours:
             error_msg = f"Erreur {global_e}"
             print("Erreur", global_e)
             return {'error': error_msg} 
-        
  
-
-
     def update_group_and_flag(self): 
         def random_string(length=12):
             return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -478,12 +616,6 @@ class Encours:
             import traceback
             print(f"[DEBUG] Traceback complet : {traceback.format_exc()}")
             return {'error': error_msg}
-    
-    
-    
-    # def load_file_csv_in_database(self, filename: str, app_name: str,folder:str):
-         
-    #         folder_path = os.path.join(project_root, 'load_file', app_name,folder)
         
     def load_file_csv_in_database(self, filename: str, app_name: str, folder: str):
         """
@@ -780,9 +912,9 @@ class Encours:
                     "message": f"[ERREUR CRITIQUE] Exception non gérée dans la fonction principale : {str(global_error)}"
                 }
             yield json.dumps({
-            "fait": "true",
-            "message": "insertion fait"
-        })
+                "fait": "true",
+                "message": "insertion fait"
+            })
         return progress_generator()
 
     def clean_filename(filename):
@@ -806,7 +938,6 @@ class Encours:
         # Convertir le DataFrame en liste
         data = [df.columns.tolist()] + df.fillna('').values.tolist()
         return data
-
 
     def insert_into_echange_credit(self, data): 
         def generate_next_id(cursor):
@@ -1067,7 +1198,6 @@ class Encours:
         finally:
             if conn:
                 conn.close()
-
 
     def insert_into_declaration(self, data):  
         print(data)
