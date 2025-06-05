@@ -9,8 +9,9 @@ import pandas as pd
 import re 
 import csv
 import json
-import sys
-
+import sys 
+import tempfile
+from werkzeug.utils import secure_filename
 
 class Encours:
     def __init__(self):
@@ -59,47 +60,94 @@ class Encours:
         return False
     
     def upload_file_manual_in_detail(self, file, app_name, folder_name=None, current=None, total=None):
-        if file and self.allowed_file(file.filename):
-            filename = secure_filename(file.filename)
+        if not file or not self.allowed_file(file.filename):
+            yield {"status": "error", "file": str(file), "message": "Format invalide"}
+            return
 
-            if folder_name:
-                folder = os.path.join(app_name, folder_name) if app_name else folder_name
-            else:
-                folder = app_name
-            folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
-            os.makedirs(folder_path, exist_ok=True)
+        filename = secure_filename(file.filename)
+        
+        # Construire le chemin de destination
+        if folder_name:
+            folder = os.path.join(app_name, folder_name) if app_name else folder_name
+        else:
+            folder = app_name
+        folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
+        os.makedirs(folder_path, exist_ok=True)
 
-            filepath = os.path.join(folder_path, filename)
-
+        final_filepath = os.path.join(folder_path, filename)
+        temp_filepath = None
+        
+        try:
+            # Utiliser un fichier temporaire pour l'upload
+            temp_filepath = final_filepath + '.tmp'
+            
             chunk_size = 1024 * 1024  # 1 MB
             total_size = 0
 
-            # Essayer de récupérer la taille réelle du fichier à partir du stream
+            # Récupérer la taille attendue du fichier
+            total_expected_size = 0
             try:
-                file.stream.seek(0, 2)  # va à la fin
+                file.stream.seek(0, 2)
                 total_expected_size = file.stream.tell()
-                file.stream.seek(0)  # revient au début
-            except Exception:
-                total_expected_size = 0
+                file.stream.seek(0)
+            except Exception as e:
+                yield {
+                    "status": "warning", 
+                    "file": filename,
+                    "message": f"Impossible de déterminer la taille du fichier: {str(e)}"
+                }
 
-            with open(filepath, 'wb') as f:
+            # Écriture avec gestion d'erreurs
+            with open(temp_filepath, 'wb') as f:
                 while True:
-                    chunk = file.stream.read(chunk_size)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-                    total_size += len(chunk)
+                    try:
+                        chunk = file.stream.read(chunk_size)
+                        if not chunk:
+                            break
+                        
+                        # Vérifier que l'écriture s'est bien passée
+                        bytes_written = f.write(chunk)
+                        if bytes_written != len(chunk):
+                            raise IOError(f"Erreur d'écriture: {bytes_written} octets écrits au lieu de {len(chunk)}")
+                        
+                        # Forcer l'écriture sur disque
+                        f.flush()
+                        os.fsync(f.fileno())
+                        
+                        total_size += len(chunk)
 
-                    yield {
-                        "status": "progress",
-                        "file": filename,
-                        "current": current,
-                        "total": total,
-                        "received_mb": round(total_size / (1024 * 1024), 2),
-                        "total_mb": round(total_expected_size / (1024 * 1024), 2) if total_expected_size else None,
-                        "percentage_file": round((total_size / total_expected_size) * 100, 2) if total_expected_size else None,
-                        "message": f"[Serveur] Reçu {total_size / (1024 * 1024):.2f} MB..."
-                    }
+                        yield {
+                            "status": "progress",
+                            "file": filename,
+                            "current": current,
+                            "total": total,
+                            "received_mb": round(total_size / (1024 * 1024), 2),
+                            "total_mb": round(total_expected_size / (1024 * 1024), 2) if total_expected_size else None,
+                            "percentage_file": round((total_size / total_expected_size) * 100, 2) if total_expected_size else None,
+                            "message": f"[Serveur] Reçu {total_size / (1024 * 1024):.2f} MB..."
+                        }
+                        
+                    except Exception as e:
+                        # En cas d'erreur de lecture/écriture
+                        yield {
+                            "status": "error",
+                            "file": filename,
+                            "message": f"Erreur durant le transfert: {str(e)}"
+                        }
+                        return
+
+            # Vérification de l'intégrité
+            if total_expected_size > 0 and total_size != total_expected_size:
+                yield {
+                    "status": "error",
+                    "file": filename,
+                    "message": f"Transfert incomplet: {total_size} octets reçus au lieu de {total_expected_size}"
+                }
+                return
+
+            # Renommer le fichier temporaire vers le fichier final
+            os.rename(temp_filepath, final_filepath)
+            temp_filepath = None  # Marquer comme traité
 
             yield {
                 "status": "success",
@@ -108,9 +156,20 @@ class Encours:
                 "message": f"✅ Fichier {filename} transféré avec succès ({total_size / (1024 * 1024):.2f} MB)"
             }
 
-        else:
-            yield {"status": "error", "file": str(file), "message": "Format invalide"}
-
+        except Exception as e:
+            yield {
+                "status": "error",
+                "file": filename,
+                "message": f"Erreur lors de l'upload: {str(e)}"
+            }
+        
+        finally:
+            # Nettoyer le fichier temporaire en cas d'erreur
+            if temp_filepath and os.path.exists(temp_filepath):
+                try:
+                    os.remove(temp_filepath)
+                except:
+                    pass
     def upload_multiple_files(self, files, app_name, folder_name=None):
         total = len(files)
         for i, file in enumerate(files, 1):
