@@ -132,6 +132,8 @@ const handleFileUpload = (event) => {
     elt_.classList.add('file_loaded');
     is_exist_file.value = true;
   }
+
+    event.target.value = ""; // reset
 };
 
 const chargerDossier = (file,activatorProps) => {
@@ -270,35 +272,87 @@ const check_file = () => {
     uploadFile(date_dossier.value)
     isDialogActive.value = false
   }
+  date_dossier.value=''
 }
-const uploadFile = (folder_name) => {
+
+const uploadFile = async (folder_name) => {
   const formData = new FormData();
   files_data.value.forEach((file) => {
     formData.append('file', file);
   });
   formData.append('app', app_type.value);
   formData.append('folder_name', folder_name);
-  api.post('/api/upload_multiple_files', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  })
-  .then((response) => {
-    console.log(response.data);
-    // éventuellement vider les fichiers après succès
+
+  try {
+    const response = await fetch('http://localhost:5000/api/upload_multiple_files', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let { value: chunk, done: readerDone } = await reader.read();
+    let buffer = '';
+
+    while (!readerDone) {
+      buffer += decoder.decode(chunk, { stream: true });
+
+      // Découper par lignes (chaque ligne = un JSON)
+      let lines = buffer.split('\n');
+      buffer = lines.pop(); // dernière ligne incomplète
+
+      for (const line of lines) {
+        if (line.trim()) {
+          try {
+            const msg = JSON.parse(line);
+            console.log('Progress:', msg);
+
+            // Mettre à jour ton store ou UI ici avec msg
+            if (msg.percentage) {
+              usePopupStore().precentage = msg.percentage;
+            }
+            if (msg.message) {
+              usePopupStore().show_notification.message = msg.message;
+            }
+            // etc...
+          } catch (e) {
+            console.warn('Erreur JSON:', e);
+          }
+        }
+      }
+
+      ({ value: chunk, done: readerDone } = await reader.read());
+    }
+
+    // Fin de lecture
+    if (buffer.trim()) {
+      try {
+        const msg = JSON.parse(buffer);
+        console.log('Final message:', msg);
+      } catch(e) {
+        console.warn('Erreur JSON fin de flux:', e);
+      }
+    }
+
+    // Après upload, réinitialiser si besoin
     files_data.value = [];
     file_names.value = [];
     file_name.value = "Importer un fichier";
     is_exist_file.value = false;
 
-    usePopupStore().show_notification.status=true
-    usePopupStore().show_notification.message='Fichier importé'
-    usePopupStore().show_notification.ico='mdi mdi-check'
-  })
-  .catch((error) => {
-    console.error(error);
-  });
+    usePopupStore().show_notification.status = true;
+    usePopupStore().show_notification.message = 'Fichier importé';
+    usePopupStore().show_notification.ico = 'mdi mdi-check';
+
+  } catch (error) {
+    console.error('Erreur upload:', error);
+  }
 };
+
 
 
 // Méthode pour afficher les fichiers

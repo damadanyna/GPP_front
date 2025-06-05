@@ -57,13 +57,77 @@ class Encours:
             print("Extension détectée:", ext)
             return ext in ALLOWED_EXTENSIONS
         return False
+    
+    def upload_file_manual_in_detail(self, file, app_name, folder_name=None, current=None, total=None):
+        if file and self.allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+
+            if folder_name:
+                folder = os.path.join(app_name, folder_name) if app_name else folder_name
+            else:
+                folder = app_name
+            folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
+            os.makedirs(folder_path, exist_ok=True)
+
+            filepath = os.path.join(folder_path, filename)
+
+            chunk_size = 1024 * 1024  # 1 MB
+            total_size = 0
+
+            # Essayer de récupérer la taille réelle du fichier à partir du stream
+            try:
+                file.stream.seek(0, 2)  # va à la fin
+                total_expected_size = file.stream.tell()
+                file.stream.seek(0)  # revient au début
+            except Exception:
+                total_expected_size = 0
+
+            with open(filepath, 'wb') as f:
+                while True:
+                    chunk = file.stream.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    total_size += len(chunk)
+
+                    yield {
+                        "status": "progress",
+                        "file": filename,
+                        "current": current,
+                        "total": total,
+                        "received_mb": round(total_size / (1024 * 1024), 2),
+                        "total_mb": round(total_expected_size / (1024 * 1024), 2) if total_expected_size else None,
+                        "percentage_file": round((total_size / total_expected_size) * 100, 2) if total_expected_size else None,
+                        "message": f"[Serveur] Reçu {total_size / (1024 * 1024):.2f} MB..."
+                    }
+
+            yield {
+                "status": "success",
+                "file": filename,
+                "received_mb": round(total_size / (1024 * 1024), 2),
+                "message": f"✅ Fichier {filename} transféré avec succès ({total_size / (1024 * 1024):.2f} MB)"
+            }
+
+        else:
+            yield {"status": "error", "file": str(file), "message": "Format invalide"}
 
     def upload_multiple_files(self, files, app_name, folder_name=None):
-        results = []
-        for file in files:
-            result = self.upload_file(file, app_name, folder_name)
-            results.append(result)
-        return results
+        total = len(files)
+        for i, file in enumerate(files, 1):
+            try:
+                # Itérer sur le générateur et yield chaque dictionnaire produit
+                for progress in self.upload_file_manual_in_detail(file, app_name, folder_name, i, total):
+                    yield progress
+            except Exception as e:
+                yield {
+                    "status": "error",
+                    "file": file.filename if hasattr(file, "filename") else str(file),
+                    "current": i,
+                    "total": total,
+                    "percentage": round((i / total) * 100, 2),
+                    "message": f"[ERREUR] Échec du téléchargement de {file} : {str(e)}"
+                }
+
 
 
 

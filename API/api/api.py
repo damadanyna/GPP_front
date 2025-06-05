@@ -49,11 +49,33 @@ def upload_multiple_files():
 
     files = request.files.getlist('file')
     app_name = request.form.get('app')
-    folder_name = request.form.get('folder_name')  # <- récupère folder_name
+    folder_name = request.form.get('folder_name')
 
-    result = encours.upload_multiple_files(files, app_name, folder_name)  # <- passe folder_name
+    @stream_with_context
+    def generate():
+        # 🧪 Premier yield immédiat pour tester si le flux passe
+        yield json.dumps({
+            "status": "info",
+            "percentage": 0,
+            "message": "Début du téléchargement..."
+        }) + '\n'
 
-    return jsonify(result), 200
+        # 🧪 Simulation d'un délai pour voir si les messages progressent
+        import time
+        time.sleep(1)
+
+        # Ensuite on enchaîne avec le vrai traitement
+        for result in encours.upload_multiple_files(files, app_name, folder_name):
+            yield json.dumps(result) + '\n'
+
+        # 🧪 Dernier message de fin
+        yield json.dumps({
+            "status": "info",
+            "percentage": 100,
+            "message": "Téléchargement terminé."
+        }) + '\n'
+
+    return Response(generate(), mimetype='application/json')
 
 @api_bp.route('/create_table', methods=['POST'])
 def create_table():
