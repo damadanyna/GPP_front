@@ -14,13 +14,18 @@ import tempfile
 import shutil
 from werkzeug.utils import secure_filename
 
+import logging
+import time
+
 class Encours:
     def __init__(self):
         # Dossier où les fichiers seront enregistrés
         self.upload_folder = 'load_file'
         self.db = DB() 
+        
         if not os.path.exists(self.upload_folder):
             os.makedirs(self.upload_folder)
+        
  
     
     def upload_file(self, file, app_name, folder_name=None):
@@ -59,13 +64,21 @@ class Encours:
             print("Extension détectée:", ext)
             return ext in ALLOWED_EXTENSIONS
         return False
-    
+
     def upload_file_manual_in_detail(self, file, app_name, folder_name=None, current=None, total=None):
+        
+    # Configurer le logging
+        logging.basicConfig(level=logging.DEBUG)
+        logger = logging.getLogger(__name__)
+        logger.info(f"=== DÉBUT UPLOAD: {file.filename if file else 'None'} ===")
+        
         if not file or not self.allowed_file(file.filename):
+            logger.error(f"Fichier invalide: {file}")
             yield {"status": "error", "file": str(file), "message": "Format invalide"}
             return
 
         filename = secure_filename(file.filename)
+        logger.info(f"Nom sécurisé: {filename}")
         
         # Construire le chemin de destination
         if folder_name:
@@ -74,18 +87,22 @@ class Encours:
             folder = app_name
         folder_path = os.path.join(self.upload_folder, folder) if folder else self.upload_folder
         os.makedirs(folder_path, exist_ok=True)
+        logger.info(f"Dossier créé: {folder_path}")
 
         final_filepath = os.path.join(folder_path, filename)
         backup_filepath = None
+        logger.info(f"Chemin final: {final_filepath}")
         
         try:
             # Créer un backup si le fichier existe déjà
             if os.path.exists(final_filepath):
                 backup_filepath = final_filepath + '.backup'
                 shutil.copy2(final_filepath, backup_filepath)
+                logger.info(f"Backup créé: {backup_filepath}")
             
             chunk_size = 1024 * 1024  # 1 MB
             total_size = 0
+            chunk_count = 0
 
             # Récupérer la taille attendue du fichier
             total_expected_size = 0
@@ -93,27 +110,59 @@ class Encours:
                 file.stream.seek(0, 2)
                 total_expected_size = file.stream.tell()
                 file.stream.seek(0)
+                logger.info(f"Taille attendue: {total_expected_size} octets")
             except Exception as e:
+                logger.warning(f"Impossible de déterminer la taille: {e}")
                 yield {
                     "status": "warning", 
                     "file": filename,
                     "message": f"Impossible de déterminer la taille du fichier: {str(e)}"
                 }
 
-            # Écriture directe dans le fichier final
+            # Ouvrir le fichier de destination
+            logger.info("Ouverture du fichier de destination...")
             with open(final_filepath, 'wb') as f:
+                logger.info("Fichier ouvert, début de la lecture...")
+                
                 while True:
                     try:
+                        # Ajouter un timeout sur la lecture
+                        start_time = time.time()
                         chunk = file.stream.read(chunk_size)
+                        read_time = time.time() - start_time
+                        
                         if not chunk:
+                            logger.info(f"Fin de lecture après {chunk_count} chunks")
                             break
                         
-                        bytes_written = f.write(chunk)
-                        if bytes_written != len(chunk):
-                            raise IOError(f"Erreur d'écriture: {bytes_written} octets écrits au lieu de {len(chunk)}")
+                        chunk_count += 1
+                        logger.debug(f"Chunk {chunk_count}: {len(chunk)} octets lus en {read_time:.2f}s")
                         
-                        # Forcer l'écriture sur disque périodiquement
-                        f.flush()
+                        # Détecter une lecture anormalement lente (connexion coupée)
+                        if read_time > 30:  # Plus de 30 secondes pour lire 1MB
+                            logger.warning(f"Lecture très lente détectée: {read_time:.2f}s")
+                            yield {
+                                "status": "warning",
+                                "file": filename,
+                                "message": f"Connexion lente détectée ({read_time:.1f}s pour {len(chunk)} octets)"
+                            }
+                        
+                        # Écrire le chunk
+                        start_write = time.time()
+                        bytes_written = f.write(chunk)
+                        write_time = time.time() - start_write
+                        
+                        if bytes_written != len(chunk):
+                            error_msg = f"Erreur d'écriture: {bytes_written} octets écrits au lieu de {len(chunk)}"
+                            logger.error(error_msg)
+                            raise IOError(error_msg)
+                        
+                        logger.debug(f"Chunk {chunk_count}: {bytes_written} octets écrits en {write_time:.3f}s")
+                        
+                        # Forcer l'écriture sur disque tous les 10 chunks
+                        if chunk_count % 10 == 0:
+                            f.flush()
+                            logger.debug(f"Flush effectué après {chunk_count} chunks")
                         
                         total_size += len(chunk)
 
@@ -125,30 +174,43 @@ class Encours:
                             "received_mb": round(total_size / (1024 * 1024), 2),
                             "total_mb": round(total_expected_size / (1024 * 1024), 2) if total_expected_size else None,
                             "percentage_file": round((total_size / total_expected_size) * 100, 2) if total_expected_size else None,
-                            "message": f"[Serveur] Reçu {total_size / (1024 * 1024):.2f} MB..."
+                            "message": f"[Serveur] Reçu {total_size / (1024 * 1024):.2f} MB... (chunk {chunk_count})",
+                            "chunk_count": chunk_count,
+                            "read_time": round(read_time, 2),
+                            "write_time": round(write_time, 3)
                         }
                         
                     except Exception as e:
+                        logger.error(f"Erreur sur chunk {chunk_count}: {e}")
+                        
                         # Restaurer le backup en cas d'erreur
                         if backup_filepath and os.path.exists(backup_filepath):
+                            logger.info("Restauration du backup...")
+                            f.close()  # Fermer le fichier avant de le remplacer
                             shutil.move(backup_filepath, final_filepath)
                             backup_filepath = None
                         
                         yield {
                             "status": "error",
                             "file": filename,
-                            "message": f"Erreur durant le transfert: {str(e)}"
+                            "message": f"Erreur durant le transfert (chunk {chunk_count}): {str(e)}"
                         }
                         return
 
                 # Synchronisation finale
+                logger.info("Synchronisation finale...")
                 f.flush()
                 os.fsync(f.fileno())
+                logger.info("Synchronisation terminée")
 
             # Vérification de l'intégrité
+            logger.info(f"Vérification: {total_size} reçus / {total_expected_size} attendus")
             if total_expected_size > 0 and total_size != total_expected_size:
+                logger.error(f"Transfert incomplet: {total_size} != {total_expected_size}")
+                
                 # Restaurer le backup
                 if backup_filepath and os.path.exists(backup_filepath):
+                    logger.info("Restauration du backup pour transfert incomplet")
                     shutil.move(backup_filepath, final_filepath)
                     backup_filepath = None
                 
@@ -159,24 +221,52 @@ class Encours:
                 }
                 return
 
+            # Vérifier que le fichier existe et a la bonne taille
+            if os.path.exists(final_filepath):
+                actual_size = os.path.getsize(final_filepath)
+                logger.info(f"Fichier final: {actual_size} octets sur disque")
+                
+                if actual_size != total_size:
+                    logger.error(f"Taille sur disque incorrecte: {actual_size} != {total_size}")
+                    yield {
+                        "status": "error",
+                        "file": filename,
+                        "message": f"Erreur: taille sur disque ({actual_size}) différente de celle reçue ({total_size})"
+                    }
+                    return
+            else:
+                logger.error("Le fichier final n'existe pas!")
+                yield {
+                    "status": "error",
+                    "file": filename,
+                    "message": "Erreur: le fichier n'a pas été créé sur le serveur"
+                }
+                return
+
             # Succès - supprimer le backup
             if backup_filepath and os.path.exists(backup_filepath):
                 os.remove(backup_filepath)
+                logger.info("Backup supprimé")
 
+            logger.info(f"=== SUCCÈS: {filename} ({total_size} octets, {chunk_count} chunks) ===")
             yield {
                 "status": "success",
                 "file": filename,
                 "received_mb": round(total_size / (1024 * 1024), 2),
-                "message": f"✅ Fichier {filename} transféré avec succès ({total_size / (1024 * 1024):.2f} MB)"
+                "chunk_count": chunk_count,
+                "message": f"✅ Fichier {filename} transféré avec succès ({total_size / (1024 * 1024):.2f} MB, {chunk_count} chunks)"
             }
 
         except Exception as e:
+            logger.error(f"Erreur générale: {e}", exc_info=True)
+            
             # Restaurer le backup en cas d'erreur générale
             if backup_filepath and os.path.exists(backup_filepath):
                 try:
+                    logger.info("Restauration du backup (erreur générale)")
                     shutil.move(backup_filepath, final_filepath)
-                except:
-                    pass
+                except Exception as restore_error:
+                    logger.error(f"Erreur lors de la restauration: {restore_error}")
             
             yield {
                 "status": "error",
@@ -189,8 +279,11 @@ class Encours:
             if backup_filepath and os.path.exists(backup_filepath):
                 try:
                     os.remove(backup_filepath)
-                except:
-                    pass
+                    logger.info("Backup nettoyé dans finally")
+                except Exception as cleanup_error:
+                    logger.error(f"Erreur nettoyage backup: {cleanup_error}")
+            
+            logger.info(f"=== FIN UPLOAD: {filename} ===")
     def upload_multiple_files(self, files, app_name, folder_name=None):
         total = len(files)
         for i, file in enumerate(files, 1):
