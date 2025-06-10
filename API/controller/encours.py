@@ -108,7 +108,7 @@ class Encours:
             with open(final_filepath, 'wb') as f:
                 while True:
                     try:
-                        chunk = file.file.read(chunk_size)
+                        chunk = file.stream.read(chunk_size)
                         if not chunk:
                             break
                         
