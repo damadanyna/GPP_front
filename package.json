@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
+    "py": "cd api &&  flask run --host=0.0.0.0",
     "preview": "vite preview",
     "lint": "eslint . --fix"
   },
