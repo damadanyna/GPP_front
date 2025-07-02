@@ -228,7 +228,7 @@ class Encours:
             return []  # Ou éventuellement retourner une erreur personnalisée
 
         for filename in os.listdir(folder_path):
-            if filename.endswith('.xlsx') or filename.endswith('.XLSX'):
+            if filename.endswith('.xlsx') or filename.endswith('.XLSX') or filename.endswith('.csv') or filename.endswith('.CSV'):
                 files.append({
                     "used": False,
                     "file_name": filename
@@ -467,11 +467,11 @@ class Encours:
         Charge un fichier Excel depuis './load_file/{filename}' et insère les données dans la base.
         """
         reportico_valid_file_name=[
-            "account_mcbc_live_full",
+            # "account_mcbc_live_full",
             "eb_chq_in_rcp_dtl_mcbc_live_full",
-            "aa_bill_details_mcbc_live_full",
-            "eb_cont_bal_mcbc_live_full",
-            "alternate_account_mcbc_live_full", 
+            # "aa_bill_details_mcbc_live_full",
+            # "eb_cont_bal_mcbc_live_full",
+            # "alternate_account_mcbc_live_full", 
             "chq_rcp_a_valider" 
         ]
         table_name= self.nettoyer_nom_fichier(filename)
@@ -503,8 +503,13 @@ class Encours:
             
             # Lecture du fichier avec gestion d'erreur détaillée
             try:
-                
-                data = self.read_xlsx_file(filepath)
+                if app_name == 'reportico':
+                    if table_name== "eb_chq_in_rcp_dtl_mcbc_live_full":
+                        data = self.read_csv_file(filepath)
+                    else:
+                        data = self.read_xlsx_file(filepath)
+                else:
+                    data = self.read_xlsx_file(filepath)
 
                 
                 if data:
@@ -931,6 +936,16 @@ class Encours:
     
     def read_xlsx_file(self, filepath: str):
         df = pd.read_excel(filepath, dtype=str, engine='openpyxl')
+
+        # Supprimer les colonnes ayant des noms dupliqués, ne garder que la première occurrence
+        df = df.loc[:, ~df.columns.duplicated(keep='first')]
+
+        # Convertir le DataFrame en liste
+        data = [df.columns.tolist()] + df.fillna('').values.tolist()
+        return data    
+    def read_csv_file(self, filepath: str):
+        # Lire le fichier CSV avec séparateur '^'
+        df = pd.read_csv(filepath, dtype=str, sep='^')
 
         # Supprimer les colonnes ayant des noms dupliqués, ne garder que la première occurrence
         df = df.loc[:, ~df.columns.duplicated(keep='first')]

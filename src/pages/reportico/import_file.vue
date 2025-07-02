@@ -23,7 +23,7 @@
     </div>
 
       <!-- Input caché pour l'upload -->
-      <input type="file" accept=".xlsx"  ref="fileInput" class="hidden-file-input" @change="handleFileUpload">
+      <input type="file" accept=".xlsx,.csv"  ref="fileInput" class="hidden-file-input" @change="handleFileUpload">
     </v-card>
     <v-dialog max-width="500">
       <template v-slot:activator="{ props: activatorProps }">
@@ -42,11 +42,11 @@
             <div v-for="item,i in list_file" :key="i" @click="show_popup(item.file_name)" style=" display: flex; justify-content: center; width: 100%; font-size: 12px; ">
               <div class="" style=" width: 300px;">
                 <div v-if=" item.used==true" style="color: green; border: 1px solid green; padding: 2px 10px; border-radius: 10px;margin: 2px;">
-                  <span>{{resize_text( item.file_name,40) }}</span>
+                  <span>{{resize_text( item.file_name,70) }}</span>
                   <v-icon size="20"> mdi-check</v-icon>
                 </div>
                 <div v-else style=" padding: 2px 10px; cursor: pointer; margin: 2px;">
-                  <span>{{resize_text( item.file_name,40) }}</span>
+                  <span>{{resize_text( item.file_name,70) }}</span>
                 </div>
               </div>
             </div>
