@@ -252,9 +252,11 @@ def get_all_dfe_database():
     """
     offset = int(request.args.get('offset', 0))
     limit = int(request.args.get('limit', 100))  
-    print (f"offset: {offset}, limit: {limit}")
+    date=  request.args.get('date')
+    # print (f"offset: {offset}, limit: {limit}, date: {date}")
+    
     try:  # récupère l'offset de l'URL
-        data = encours.get_all_dfe_database(offset=offset,limit=limit)
+        data = encours.get_all_dfe_database(offset=offset,limit=limit,date=date)
         # Liste des clés
         cles = [
             'Agence', 'identification_client', 'Numero_pret', 'linked_appl_id', 'Date_pret',
@@ -523,6 +525,16 @@ def read_file(filename):
         return jsonify({'error': 'File not found'}), 404
     data = encours.read_xlsx_file(filename)
     return jsonify({'data': data})
+
+
+@api_bp.route('/list_table_encours', methods=['GET'])
+def list_table_encours():
+    """
+    Route pour retourner la liste des tables qui commencent par 'encours_credits_'.
+    """
+    data = encours.get_all_encours_table()
+    return jsonify({'data': data})
+
 
 @api_bp.route('/update_is_create', methods=['POST'])
 def update_is_create():

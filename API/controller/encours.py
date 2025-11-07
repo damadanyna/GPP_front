@@ -280,13 +280,53 @@ class Encours:
             current_level.extend(csv_files)
 
         return tree
+    
+     
+    def get_all_encours_table(self):
+        """
+        Retourne la liste de toutes les tables de la base de données
+        dont le nom commence par 'encours_credits_'.
+        """
+        try:
+            conn = self.db.connect()
+            cursor = conn.cursor()
 
-    def get_all_dfe_database(self, offset,limit):
+            # Récupère la base de données courante
+            cursor.execute("SELECT DATABASE();")
+            db_name = cursor.fetchone()[0]
+
+            # Requête pour trouver toutes les tables commençant par 'encours_credits_'
+            query = f"""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = '{db_name}'
+                AND table_name LIKE 'encours_credit_%' ORDER BY table_name DESC;
+            """
+
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            # Transformer le résultat en liste simple
+            table_list = [row[0] for row in rows]
+
+            return table_list
+
+        except Exception as global_e:
+            error_msg = f"Erreur lors de la récupération des tables : {global_e}"
+            print(error_msg)
+            return {'error': error_msg}
+
+        finally:
+            cursor.close()
+            conn.close()
+
+
+    def get_all_dfe_database(self, offset,limit,date):
         try: 
             conn = self.db.connect()
             cursor = conn.cursor()
             # Offset should be dynamically included in the query
-            select_query = f'SELECT * FROM etat_des_encours LIMIT {limit} OFFSET {offset}'
+            select_query = f'SELECT * FROM encours_credit_{date} LIMIT {limit} OFFSET {offset}' 
             # select_query = f'SELECT * FROM etat_des_encours'
             
             # Execute the query

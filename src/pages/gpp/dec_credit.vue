@@ -9,6 +9,16 @@
     <v-tabs-window v-model="tab" style="margin-top: 50px; background-color: #212121; padding: 5px 40px; border-radius: 10px;">
       <v-tabs-window-item value="one" style=" ">
         <v-card title="Etat des Encours" flat>
+          <div style=" position: absolute; margin-top: -130px; right: 10px; width: 400px;">
+            <v-combobox
+              v-model="selected_encours"
+               @update:model-value="set_encours_data"
+              label="Séléctionner un date "
+              :items="encours_credits_list"
+              variant="outlined"
+              class="no-padding-combobox"
+            ></v-combobox>
+            </div>
           <template v-slot:text>
             <v-text-field v-model="search" label="Search" prepend-inner-icon="mdi-magnify" variant="outlined" hide-details single-line></v-text-field>
           </template>
@@ -174,6 +184,10 @@ const header_model=[  { key: "Id", title: "Id" },
 
 const  list_encours=ref([])
 
+
+
+const encours_credits_list = ref([]);
+const selected_encours = ref(null);
 // Variables pour le dialogue
 const dialog = ref(false);
 const dialog_a_traiter = ref(false);
@@ -185,42 +199,16 @@ const selectedRow = ref(null);
 const list_a_traiter_ = ref(null);
 const data_temp=ref([])
 
-const get_encours = async (offset, limit) => {
+const get_encours = async (offset, limit,date) => {
   try {
-    // const cacheKey = `encours_${offset}_${limit}`;
-
-    // D'abord, on essaie de récupérer depuis IndexedDB
-    // const cachedData = await getData(cacheKey);
-
-    // console.log(cachedData);
-    // if (cachedData) {
-    //   console.log('✅ Données chargées depuis IndexedDB');
-    //   // list_encours.value = cachedData;
-    //   return;
-    // }
-
     // Sinon on fait l'appel à l’API
-    const response = await api.get(`/api/get_encours?offset=${offset}&limit=${limit}`);
-    // data_fetch.value  response.data.list_of_data;
-
-    // Sauvegarde dans IndexedDB
-    // const allData = await getAllData();
-    // console.log(response.data.list_of_data.length);
-    // console.log(allData.length);
+    const response = await api.get(`/api/get_encours?offset=${offset}&limit=${limit}&date=${date}`);
 
     for (let index = 0; index < response.data.list_of_data.length; index++) {
       const element = response.data.list_of_data[index];
       data_temp.value.push (element);
       list_encours.value.push (element);
     }
-
-    // if ( data_temp.value.length > allData.length) {
-    //   await clearData();
-    //   await saveData(cacheKey,response.data.list_of_data.length);
-    //   // console.log('📡 Données récupérées depuis API et stockées localement');
-    //   list_encours.value = data_temp.value;
-
-    // }
 
   } catch (error) {
     console.error("❌ Erreur lors de la récupération des fichiers:", error);
@@ -344,10 +332,10 @@ const send_selected_credit = async () => {
     console.error("❌ Erreur lors de l'envoi du crédit sélectionné :", error);
   }
 };
-const loadAllEncours = async () => {
+const loadAllEncours = async (date) => {
   const step = 100;
   for (let offset = 0; offset < 10000; offset += step) {
-    await get_encours(offset, step);
+    await get_encours(offset, step,date);
   }
 
   await get_list_a_traiter();
@@ -379,27 +367,49 @@ const create_gpp_ = async () => {
   }
 };
 
-// const formatDate=>(dateString) {
-//     if (!dateString) return '';
-//     const date = new Date(dateString);
-//     return date.getDate().toString().padStart(2, '0') +
-//            (date.getMonth() + 1).toString().padStart(2, '0') +
-//            date.getFullYear();
-//   }
+const get_encours_table = async () => {
+  try {
+    const response = await api.get("/api/list_table_encours");
+    console.log(response.data);
+
+    encours_credits_list.value = response.data.data
+    console.log(encours_credits_list.value);
+
+
+  } catch (error) {
+
+    console.log(error);
+
+
+  }
+};
+
+
+ function set_encours_data() {
+    data_temp.value=[];
+      list_encours.value=[];
+  const data= selected_encours.value
+  const date = data.split("_")[2];
+  console.log(date);
+  loadAllEncours(date);
+  // loadAllEncours(selected_encours.value)
+
+}
+
+// const set_encours_data= async () => {
+//   console.log(selected_encours.value);
+//   // loadAllEncours(selected_encours.value);
+//   // closeDialog()
+// };
+
+
 
 onMounted(async ()=>{
-  loadAllEncours();
+  get_encours_table();
+  loadAllEncours("20251015");
   get_list_a_traiter()
   const allData = await getAllData();
   list_encours.value = allData;
-  // console.log(allData );
-
-  // console.log(allData);
-
-  // get_encours(0,10000)
-  // setTimeout(() => {
-  //   get_encours(0,10000)
-  // }, 200);
 })
 function downloadCSVFromProxyData(proxyData, headers) {
   const dataArray = Array.from(proxyData);
@@ -436,6 +446,11 @@ function downloadCSVFromProxyData(proxyData, headers) {
 
 
 </script>
+
+.no-padding-combobox .v-field__input {
+    padding: 0 !important;
+  margin: 0 !important;
+}
 
 <style >
 tbody{
