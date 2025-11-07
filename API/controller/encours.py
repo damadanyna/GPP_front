@@ -311,7 +311,7 @@ class Encours:
                                         (SELECT id FROM tmp_rib_indexed WHERE tmp_rib_indexed.rib = reject.OrderingRib),
                                         (SELECT id FROM tmp_rib_indexed WHERE tmp_rib_indexed.rib2 = reject.OrderingRib)
                                     )) ) as solde
-                                FROM eb_chq_in  as reject where RejectCode !=""'''
+                                FROM eb_chq_in_rcp_dtl_mcbc_live_full  as reject where RejectCode !=""'''
             # select_query = f'SELECT * FROM etat_des_encours'
             
             # Execute the query
